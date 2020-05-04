@@ -11,11 +11,11 @@ local Step = {}
 Step.__index = Step
 
 function Step.new(chance, velocity, duration)
-  local o = setmetatable({}, Step)
-  o.chance = chance or 0      -- [0, 1] for probability
-  o.velocity = velocity or 1  -- [0, 1]
-  o.duration = duration or 1  -- [0, 1] where duration is a multiplier on 1/row.res
-  return o
+  local self = setmetatable({}, Step)
+  self.chance = chance or 0      -- [0, 1] for probability
+  self.velocity = velocity or 1  -- [0, 1]
+  self.duration = duration or 1  -- [0, 1] where duration is a multiplier on 1/row.res
+  return self
 end
 
 function Step:is_active()
@@ -38,15 +38,15 @@ Row.__index = Row
 local MAX_STEPS = 16
 
 function Row.new(props)
-  local o = setmetatable(props or {}, Row)
-  o:set_n(o.n or 8)
-  o:set_res(o.res or 4)
-  o:set_bend(o.bend or 1.0)
-  o:set_offset(o.offset or 0)
-  o.steps = {}
-  o:steps_clear()
-  o._scaler = sky.build_scalex(0, 1, 0, 1)
-  return o
+  local self = setmetatable({}, Row)
+  self:set_n(props.n or 8)
+  self:set_res(props.res or 4)
+  self:set_bend(props.bend or 1.0)
+  self:set_offset(props.offset or 0)
+  self.steps = {}
+  self:steps_clear()
+  self._scaler = sky.build_scalex(0, 1, 0, 1)
+  return self
 end
 
 function Row:set_res(r)
@@ -94,6 +94,10 @@ function Row:head_position(beats)
   return self._scaler(f, self.bend)
 end
 
+function Row:step_index(beats)
+  return 1 + math.floor(self:head_position(beats) * self.n)
+end
+
 --
 -- Tambla
 --
@@ -105,7 +109,7 @@ Tambla.TICK_EVENT = 'TAMBLA_TICK'
 function Tambla.new(props)
   local self = setmetatable({}, Tambla)
   self.rows = {
-    Row.new{ n = 14 },
+    Row.new{ n = 16 },
     Row.new{ n = 8  },
     Row.new{ n = 8  },
     Row.new{ n = 16 },
@@ -137,10 +141,15 @@ local TamblaNoteGen = sky.Device()
 TamblaNoteGen.__index = TamblaNoteGen
 
 function TamblaNoteGen.new(model)
-  local o = setmetatable({}, TamblaNoteGen)
-  o._scheduler = nil
-  o.model = model
-  return o
+  local self = setmetatable({}, TamblaNoteGen)
+  self.model = model
+  self._scheduler = nil
+  self._notes = {}
+  self._last_index = {}
+  for i = 1, #self.model.rows do
+    self._last_index[i] = 0
+  end
+  return self
 end
 
 function TamblaNoteGen:device_inserted(chain)
@@ -159,12 +168,29 @@ end
 
 function TamblaNoteGen:process(event, output, state)
   if self.model.is_tick(event) then
-    -- update tick
-    --print("got tick")
-    output(event)
+    output(event) -- pass the tick along
+    -- determine if a not should be generated
+    local beat = event.beat
+    for i, r in ipairs(self.model.rows) do
+      local idx = r:step_index(beat)
+      if idx ~= self._last_index[i] then
+        -- we are at a new step
+        -- print("row", i, "step", idx)
+        local step = r.steps[idx] -- which step within row
+        local note = self._notes[i] -- note which matches row based on order held
+        if note ~= nil and step.chance > 0 then -- math.random() < step.chance then
+          local velocity = math.floor(note.vel * step.velocity)
+          local duration = 1/16 -- FIXME: this is based on row res, step count and step duration scaler
+          local generated = sky.mk_note_on(note.note, velocity, note.ch)
+          generated.duration = duration
+          output(generated) -- requires a make_note device to produce note off
+        end
+      end
+      -- note that we've looked at this step
+      self._last_index[i] = idx
+    end
   elseif sky.is_type(event, sky.HELD_EVENT) then
-    -- consume held notes
-    print("got held notes")
+    self._notes = event.notes
   else
     output(event)
   end
@@ -265,8 +291,9 @@ tambla = Tambla.new{
 }
 
 main = sky.Chain{
-  sky.Held{},
+  sky.Held{ debug = true },
   TamblaNoteGen.new(tambla),
+  sky.MakeNote{},
   sky.Output{},
   sky.Logger{
     filter = tambla.is_tick,
