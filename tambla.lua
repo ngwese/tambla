@@ -7,15 +7,12 @@ sky.use('sky/lib/io/norns')
 -- Step
 --
 
-local Step = {}
-Step.__index = Step
+local Step = sky.Object:extend()
 
-function Step.new(chance, velocity, duration)
-  local self = setmetatable({}, Step)
+function Step:new(chance, velocity, duration)
   self.chance = chance or 0      -- [0, 1] for probability
   self.velocity = velocity or 1  -- [0, 1]
   self.duration = duration or 1  -- [0, 1] where duration is a multiplier on 1/row.res
-  return self
 end
 
 function Step:is_active()
@@ -32,13 +29,11 @@ end
 -- Row
 --
 
-local Row = {}
-Row.__index = Row
+local Row = sky.Object:extend()
 
 local MAX_STEPS = 16
 
-function Row.new(props)
-  local self = setmetatable({}, Row)
+function Row:new(props)
   self:set_n(props.n or 8)
   self:set_res(props.res or 4)
   self:set_bend(props.bend or 1.0)
@@ -46,7 +41,6 @@ function Row.new(props)
   self.steps = {}
   self:steps_clear()
   self._scaler = sky.build_scalex(0, 1, 0, 1)
-  return self
 end
 
 function Row:set_res(r)
@@ -71,7 +65,7 @@ end
 
 function Row:steps_clear()
   for i = 1, MAX_STEPS do
-    self.steps[i] = Step.new(0) -- zero chance
+    self.steps[i] = Step(0) -- zero chance
   end
 end
 
@@ -102,20 +96,17 @@ end
 -- Tambla
 --
 
-local Tambla = {}
-Tambla.__index = Tambla
+local Tambla = sky.Object:extend()
 Tambla.TICK_EVENT = 'TAMBLA_TICK'
 
-function Tambla.new(props)
-  local self = setmetatable({}, Tambla)
+function Tambla:new(props)
   self.rows = {
-    Row.new{ n = 16 },
-    Row.new{ n = 8  },
-    Row.new{ n = 8  },
-    Row.new{ n = 16 },
+    Row{ n = 16 },
+    Row{ n = 8  },
+    Row{ n = 8  },
+    Row{ n = 16 },
   }
   self.tick_period = props.tick_period or 1/32
-  return self
 end
 
 function Tambla.mk_tick()
@@ -201,17 +192,14 @@ end
 -- RowWidget
 --
 
-local RowWidget = {}
-RowWidget.__index = RowWidget
+local RowWidget = sky.Object:extend()
 RowWidget.HEIGHT = 15
 RowWidget.STEP_WIDTH = 6
 RowWidget.BAR_WIDTH = 4
 RowWidget.BAR_HEIGHT = 10
 
-function RowWidget.new(x, y)
-  local o = setmetatable({}, RowWidget)
-  o.topleft = {x or 1, y or 1}
-  return o
+function RowWidget:new(x, y)
+  self.topleft = {x or 1, y or 1}
 end
 
 function RowWidget:width(row)
@@ -259,19 +247,16 @@ end
 -- TamblaRender
 --
 
-local TamblaRender = {}
-TamblaRender.__index = TamblaRender
+local TamblaRender = sky.Object:extend()
 
-function TamblaRender.new(x, y, model)
-  local self = setmetatable({}, TamblaRender)
+function TamblaRender:new(x, y, model)
   self.topleft = { x, y }
   self.model = model
   self.widgets = {}
   for i, r in ipairs(self.model.rows) do
-    table.insert(self.widgets, RowWidget.new())
+    table.insert(self.widgets, RowWidget())
   end
   layout_vertical(x, y, self.widgets)
-  return self
 end
 
 function TamblaRender:render(event, props)
@@ -286,7 +271,7 @@ end
 --
 --
 
-tambla = Tambla.new{
+tambla = Tambla{
   tick_period = 1/32,
 }
 
@@ -303,7 +288,7 @@ main = sky.Chain{
   end,
   sky.NornsDisplay{
     screen.clear,
-    TamblaRender.new(0, 2, tambla),
+    TamblaRender(0, 2, tambla),
     screen.update,
   }
 }
