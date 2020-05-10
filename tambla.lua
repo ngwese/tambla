@@ -1,6 +1,7 @@
 include('sky/lib/prelude')
 sky.use('sky/lib/device/make_note')
 sky.use('sky/lib/device/arp')
+sky.use('sky/lib/device/switcher')
 sky.use('sky/lib/io/norns')
 sky.use('sky/lib/engine/polysub')
 
@@ -281,8 +282,11 @@ main = sky.Chain{
   sky.Held{ debug = true },
   TamblaNoteGen(tambla),
   sky.MakeNote{},
-  --sky.Output{},
-  sky.PolySub{},
+  sky.Switcher{
+    which = 1,
+    sky.Output{},
+    sky.PolySub{},
+  },
   sky.Logger{
     filter = tambla.is_tick,
   },
