@@ -97,6 +97,29 @@ function Tambla:new(props)
     Row{ n = 16 },
   }
   self.tick_period = props.tick_period or 1/32
+
+  self:select_row(1)
+  self:select_prop(1)
+  self.prop_codes = {'b', 'o', 'r', 'n',}
+  self.prop_names = {'bend', 'offset', 'res', 'n'}
+end
+
+-- row selection state
+function Tambla:select_row(i) self._selected_row = util.clamp(math.floor(i), 1, 4) end
+
+function Tambla:selected_row() return self.rows[self._selected_row] end
+
+-- property selection state
+function Tambla:select_prop(i) self._selected_prop = util.clamp(math.floor(i), 1, 4) end
+
+function Tambla:selected_prop_name()
+  return self.prop_codes[self._selected_prop]
+end
+
+function Tambla:selected_prop_value()
+  local r = self:selected_row()
+  local k = self.prop_names[self._selected_prop]
+  return r[k]
 end
 
 function Tambla.mk_tick()
@@ -253,7 +276,9 @@ function TamblaRender:new(x, y, model)
   for i, r in ipairs(self.model.rows) do
     table.insert(self.widgets, RowWidget())
   end
-  layout_vertical(x, y, self.widgets)
+  layout_vertical(x + 4, y, self.widgets)
+  screen.font_face(0)
+  screen.font_size(8)
 end
 
 function TamblaRender:render(event, props)
@@ -262,6 +287,22 @@ function TamblaRender:render(event, props)
   for i, r in ipairs(self.widgets) do
     r:draw(rows[i], beat)
   end
+
+  -- selection carat
+  local y = self.model._selected_row * RowWidget.HEIGHT - 2
+  screen.level(15)
+  screen.rect(self.topleft[1], y, 2, 2)
+
+  -- property label
+  local t = self.model:selected_prop_name()
+  screen.move(110, 7)
+  screen.text(t)
+
+  -- property value
+  local v = self.model:selected_prop_value()
+  screen.move(110, 16)
+  screen.text(v)
+
 end
 
 --
@@ -275,7 +316,7 @@ tambla = Tambla{
 display = sky.Chain{
   sky.NornsDisplay{
     screen.clear,
-    TamblaRender(5, 2, tambla),
+    TamblaRender(0, 2, tambla),
     screen.update,
   }
 }
@@ -312,7 +353,9 @@ function TamblaControl:new(model)
 
   self.row_count = #model.rows
   self.row_acc = 1
-  self.row_selection = 1
+
+  self.prop_count = 4 -- FIXME: get this from the model
+  self.prop_acc = 1
 end
 
 function TamblaControl:process(event, output, state)
@@ -324,16 +367,17 @@ function TamblaControl:process(event, output, state)
     end
   elseif sky.is_enc(event) then
     if event.num == 1 then
-      self.row_acc = self.row_acc + (event.delta / 20)
-      self.row_selection = (math.floor(self.row_acc) % self.row_count) + 1
-      print("select", self.row_selection)
+      self.row_acc = util.clamp(self.row_acc + (event.delta / 10), 1, self.row_count)
+      self.model:select_row(self.row_acc)
+      --print("select", self.model._selected_row)
     elseif event.num == 2 then
-      local row = self.model.rows[self.row_selection]
-      row:set_bend(row.bend + (event.delta / 100))
-      print("bend", self.row_selection, row.bend)
-      -- something
+      self.prop_acc = util.clamp(self.prop_acc + (event.delta / 20), 1, self.prop_count)
+      self.model:select_prop(self.prop_acc)
+      --print("prop", self.model:selected_prop_name())
     elseif event.num == 3 then
-      -- else
+      local row = self.model:selected_row()
+      row:set_bend(row.bend + (event.delta / 100))
+      print("bend", self.model._selected_row, row.bend)
     end
   end
 end
