@@ -2,6 +2,10 @@ include('sky/lib/prelude')
 sky.use('sky/lib/device/make_note')
 sky.use('sky/lib/device/arp')
 sky.use('sky/lib/io/norns')
+sky.use('sky/lib/engine/polysub')
+
+local halfsecond = include('awake/lib/halfsecond')
+
 
 --
 -- Step
@@ -128,11 +132,10 @@ end
 -- TamblaNoteGen
 --
 
-local TamblaNoteGen = sky.Device()
-TamblaNoteGen.__index = TamblaNoteGen
+local TamblaNoteGen = sky.Device:extend()
 
-function TamblaNoteGen.new(model)
-  local self = setmetatable({}, TamblaNoteGen)
+function TamblaNoteGen:new(model)
+  TamblaNoteGen.super.new(self)
   self.model = model
   self._scheduler = nil
   self._notes = {}
@@ -140,7 +143,6 @@ function TamblaNoteGen.new(model)
   for i = 1, #self.model.rows do
     self._last_index[i] = 0
   end
-  return self
 end
 
 function TamblaNoteGen:device_inserted(chain)
@@ -277,9 +279,10 @@ tambla = Tambla{
 
 main = sky.Chain{
   sky.Held{ debug = true },
-  TamblaNoteGen.new(tambla),
+  TamblaNoteGen(tambla),
   sky.MakeNote{},
-  sky.Output{},
+  --sky.Output{},
+  sky.PolySub{},
   sky.Logger{
     filter = tambla.is_tick,
   },
@@ -318,6 +321,15 @@ input2 = sky.NornsInput{
 --
 
 function init()
+  halfsecond.init()
+
+  -- halfsecond
+  params:set('delay', 0.13)
+  params:set('delay_rate', 0.95)
+  params:set('delay_feedback', 0.27)
+  -- polysub
+  params:set('amprel', 0.1)
+
   tambla:randomize()
 end
 
