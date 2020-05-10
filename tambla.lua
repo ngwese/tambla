@@ -48,25 +48,10 @@ function Row:new(props)
   self._scaler = sky.build_scalex(0, 1, 0, 1)
 end
 
-function Row:set_res(r)
-  self.res = util.clamp(math.floor(r), 4, 32)
-  return self
-end
-
-function Row:set_n(n)
-  self.n = util.clamp(math.floor(n), 2, 32)
-  return self
-end
-
-function Row:set_bend(b)
-  self.bend = util.clamp(b, 0.2, 5)
-  return self
-end
-
-function Row:set_offset(o)
-  self.offset = math.floor(o)
-  return self
-end
+function Row:set_res(r) self.res = util.clamp(math.floor(r), 4, 32) end
+function Row:set_n(n) self.n = util.clamp(math.floor(n), 2, 32) end
+function Row:set_bend(b) self.bend = util.clamp(b, 0.2, 5) end
+function Row:set_offset(o) self.offset = math.floor(o) end
 
 function Row:steps_clear()
   for i = 1, MAX_STEPS do
@@ -160,6 +145,10 @@ function TamblaNoteGen:device_removed(chain)
   self._scheduler = nil
 end
 
+--
+-- TODO: enable/disable chance evaluation
+-- TODO: 
+
 function TamblaNoteGen:process(event, output, state)
   if self.model.is_tick(event) then
     output(event) -- pass the tick along
@@ -172,12 +161,17 @@ function TamblaNoteGen:process(event, output, state)
         -- print("row", i, "step", idx)
         local step = r.steps[idx] -- which step within row
         local note = self._notes[i] -- note which matches row based on order held
-        if note ~= nil and step.chance > 0 then -- math.random() < step.chance then
-          local velocity = math.floor(note.vel * step.velocity)
-          local duration = 1/16 -- FIXME: this is based on row res, step count and step duration scaler
-          local generated = sky.mk_note_on(note.note, velocity, note.ch)
-          generated.duration = duration
-          output(generated) -- requires a make_note device to produce note off
+        if note ~= nil then
+          --if math.random() < step.chance then
+          if step.chance > 0 then
+            local velocity = math.floor(note.vel * step.velocity)
+            local duration = 1/16 -- FIXME: this is based on row res, step count and step duration scaler
+            local generated = sky.mk_note_on(note.note, velocity, note.ch)
+            generated.duration = duration
+            output(generated) -- requires a make_note device to produce note off
+          else
+            --print("skip:", i, idx)
+          end
         end
       end
       -- note that we've looked at this step
@@ -278,8 +272,16 @@ tambla = Tambla{
   tick_period = 1/32,
 }
 
+display = sky.Chain{
+  sky.NornsDisplay{
+    screen.clear,
+    TamblaRender(5, 2, tambla),
+    screen.update,
+  }
+}
+
 main = sky.Chain{
-  sky.Held{ debug = true },
+  sky.Held{ debug = false },
   TamblaNoteGen(tambla),
   sky.MakeNote{},
   sky.Switcher{
@@ -288,16 +290,13 @@ main = sky.Chain{
     sky.PolySub{},
   },
   sky.Logger{
+    bypass = true,
     filter = tambla.is_tick,
   },
   function(event, output)
     if tambla.is_tick(event) then output(sky.mk_redraw()) end
   end,
-  sky.NornsDisplay{
-    screen.clear,
-    TamblaRender(0, 2, tambla),
-    screen.update,
-  }
+  sky.Forward(display),
 }
 
 input1 = sky.Input{
@@ -305,18 +304,46 @@ input1 = sky.Input{
   chain = main,
 }
 
+local TamblaControl = sky.Device:extend()
+
+function TamblaControl:new(model)
+  TamblaControl.super.new(self)
+  self.model = model
+
+  self.row_count = #model.rows
+  self.row_acc = 1
+  self.row_selection = 1
+end
+
+function TamblaControl:process(event, output, state)
+  output(event)
+  if sky.is_key(event) then
+    if event.num == 3 and event.z == 1 then
+      self.model:randomize()
+      output(sky.mk_redraw())
+    end
+  elseif sky.is_enc(event) then
+    if event.num == 1 then
+      self.row_acc = self.row_acc + (event.delta / 20)
+      self.row_selection = (math.floor(self.row_acc) % self.row_count) + 1
+      print("select", self.row_selection)
+    elseif event.num == 2 then
+      local row = self.model.rows[self.row_selection]
+      row:set_bend(row.bend + (event.delta / 100))
+      print("bend", self.row_selection, row.bend)
+      -- something
+    elseif event.num == 3 then
+      -- else
+    end
+  end
+end
+
+
 input2 = sky.NornsInput{
   chain = sky.Chain{
     -- sky.Logger{},
-    -- for testing purposes
-    function(event, output)
-      output(event)
-      if sky.is_key(event) and event.num == 3 and event.z == 1 then
-        tambla:randomize()
-        output(sky.mk_redraw())
-      end
-    end,
-    sky.Forward(main)
+    TamblaControl(tambla),
+    sky.Forward(display)
   },
 }
 
