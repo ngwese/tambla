@@ -5,8 +5,9 @@ sky.use('sky/lib/device/switcher')
 sky.use('sky/lib/io/norns')
 sky.use('sky/lib/engine/polysub')
 
-local halfsecond = include('awake/lib/halfsecond')
-
+--local halfsecond = include('awake/lib/halfsecond')
+local fmt = require('formatters')
+local cs = require('controlspec')
 
 --
 -- Step
@@ -107,14 +108,21 @@ end
 -- row selection state
 function Tambla:select_row(i) self._selected_row = util.clamp(math.floor(i), 1, 4) end
 
+function Tambla:selected_row_idx() return self._selected_row end
+
 function Tambla:selected_row() return self.rows[self._selected_row] end
 
 -- property selection state
 function Tambla:select_prop(i) self._selected_prop = util.clamp(math.floor(i), 1, 4) end
 
-function Tambla:selected_prop_name()
+function Tambla:selected_prop_code()
   return self.prop_codes[self._selected_prop]
 end
+
+function Tambla:selected_prop_name()
+  return self.prop_names[self._selected_prop]
+end
+
 
 function Tambla:selected_prop_value()
   local r = self:selected_row()
@@ -170,7 +178,7 @@ end
 
 --
 -- TODO: enable/disable chance evaluation
--- TODO: 
+--
 
 function TamblaNoteGen:process(event, output, state)
   if self.model.is_tick(event) then
@@ -188,7 +196,9 @@ function TamblaNoteGen:process(event, output, state)
           --if math.random() < step.chance then
           if step.chance > 0 then
             local velocity = math.floor(note.vel * step.velocity)
-            local duration = 1/16 -- FIXME: this is based on row res, step count and step duration scaler
+            --local duration = 1/16 -- FIXME: this is based on row res, step count and step duration scaler
+            --local duration = 1 / (step.duration * 32 / r.res) --- ??? waaaat
+            local duration = step.duration * (1 / (32 / r.res)) --- ??? waaaat
             local generated = sky.mk_note_on(note.note, velocity, note.ch)
             generated.duration = duration
             output(generated) -- requires a make_note device to produce note off
@@ -294,7 +304,7 @@ function TamblaRender:render(event, props)
   screen.rect(self.topleft[1], y, 2, 2)
 
   -- property label
-  local t = self.model:selected_prop_name()
+  local t = self.model:selected_prop_code()
   screen.move(110, 7)
   screen.text(t)
 
@@ -302,15 +312,13 @@ function TamblaRender:render(event, props)
   local v = self.model:selected_prop_value()
   screen.move(110, 16)
   screen.text(v)
-
 end
 
 --
 --
---
 
 tambla = Tambla{
-  tick_period = 1/32,
+  tick_period = 1/64,
 }
 
 display = sky.Chain{
@@ -327,8 +335,8 @@ main = sky.Chain{
   sky.MakeNote{},
   sky.Switcher{
     which = 1,
-    sky.Output{},
-    sky.PolySub{},
+    sky.Output{ name = "UM-ONE" },
+    -- sky.PolySub{},
   },
   sky.Logger{
     bypass = true,
@@ -358,6 +366,43 @@ function TamblaControl:new(model)
   self.prop_acc = 1
 end
 
+function TamblaControl:add_row_params(i)
+  local n = tostring(i)
+  -- params:add_separator('row ' .. n)
+  params:add{type = 'option', id = 'chance' .. n, name = 'chance ' .. n,
+    options = {'on', 'off'},
+    default = 1
+  }
+  params:add{type = 'option', id = 'velocity_mod' .. n, name = 'velocity mod ' .. n,
+    options = {'on', 'off'},
+    default = 1
+  }
+  params:add{type = 'option', id = 'length_mod' .. n, name = 'length mod ' .. n,
+    options = {'on', 'off'},
+    default = 1
+  }
+  params:add{type = 'control', id = 'bend' .. n, name = 'bend ' .. n,
+    controlspec = cs.new(0.2, 5.0, 'lin', 0.005, 1.0, ''),
+    formatter = fmt.round(0.01),
+    action = function(v) self.model.rows[i]:set_bend(v) end,
+  }
+  params:add{type = 'control', id = 'n' .. n, name = 'n ' .. n,
+    controlspec = cs.new(2, 16, 'lin', 1, 16, ''),
+    formatter = fmt.round(1),
+    action = function(v) self.model.rows[i]:set_n(v) end,
+  }
+  params:add{type = 'control', id = 'res' .. n, name = 'res ' .. n,
+    controlspec = cs.new(4, 32, 'lin', 1, 4, ''),
+    formatter = fmt.round(1),
+    action = function(v) self.model.rows[i]:set_res(v) end,
+  }
+  params:add{type = 'control', id = 'offset' .. n, name = 'offset ' .. n,
+    controlspec = cs.new(-16, 16, 'lin', 1, 0, ''),
+    formatter = fmt.round(1),
+    action = function(v) self.model.rows[i]:set_offset(v) end,
+  }
+end
+
 function TamblaControl:process(event, output, state)
   output(event)
   if sky.is_key(event) then
@@ -375,18 +420,22 @@ function TamblaControl:process(event, output, state)
       self.model:select_prop(self.prop_acc)
       --print("prop", self.model:selected_prop_name())
     elseif event.num == 3 then
-      local row = self.model:selected_row()
-      row:set_bend(row.bend + (event.delta / 100))
-      print("bend", self.model._selected_row, row.bend)
+      -- local row = self.model:selected_row()
+      -- row:set_bend(row.bend + (event.delta / 100))
+      -- print("bend", self.model._selected_row, row.bend)
+      local idx = self.model:selected_row_idx()
+      local id = self.model:selected_prop_name() .. tostring(idx)
+      params:delta(id, event.delta)
     end
   end
 end
 
+controls = TamblaControl(tambla)
 
 input2 = sky.NornsInput{
   chain = sky.Chain{
     -- sky.Logger{},
-    TamblaControl(tambla),
+    controls,
     sky.Forward(display)
   },
 }
@@ -396,14 +445,19 @@ input2 = sky.NornsInput{
 --
 
 function init()
-  halfsecond.init()
+  -- halfsecond.init()
 
   -- halfsecond
-  params:set('delay', 0.13)
-  params:set('delay_rate', 0.95)
-  params:set('delay_feedback', 0.27)
+  -- params:set('delay', 0.13)
+  -- params:set('delay_rate', 0.95)
+  -- params:set('delay_feedback', 0.27)
   -- polysub
-  params:set('amprel', 0.1)
+  -- params:set('amprel', 0.1)
+
+  -- tambla
+  for i = 1,4 do
+    controls:add_row_params(i)
+  end
 
   tambla:randomize()
 end
