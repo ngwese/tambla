@@ -16,10 +16,14 @@ local cs = require('controlspec')
 local Step = sky.Object:extend()
 
 function Step:new(chance, velocity, duration)
-  self.chance = chance or 0      -- [0, 1] for probability
-  self.velocity = velocity or 1  -- [0, 1]
-  self.duration = duration or 1  -- [0, 1] where duration is a multiplier on 1/row.res
+  self:set_chance(chance or 0)      -- [0, 1] for probability
+  self:set_velocity(velocity or 1)  -- [0, 1]
+  self:set_duration(duration or 1)  -- [0, 1] where duration is a multiplier on 1/row.res
 end
+
+function Step:set_chance(c) self.chance = util.clamp(c, 0, 1) end
+function Step:set_velocity(v) self.velocity = util.clamp(v, 0, 1) end
+function Step:set_duration(d) self.duration = util.clamp(d, 0, 1) end
 
 function Step:is_active()
   return self.chance > 0
@@ -45,7 +49,7 @@ function Row:new(props)
   self:set_bend(props.bend or 1.0)
   self:set_offset(props.offset or 0)
   self.steps = {}
-  self:steps_clear()
+  self:clear()
   self._scaler = sky.build_scalex(0, 1, 0, 1)
 end
 
@@ -54,7 +58,7 @@ function Row:set_n(n) self.n = util.clamp(math.floor(n), 2, 32) end
 function Row:set_bend(b) self.bend = util.clamp(b, 0.2, 5) end
 function Row:set_offset(o) self.offset = math.floor(o) end
 
-function Row:steps_clear()
+function Row:clear()
   for i = 1, MAX_STEPS do
     self.steps[i] = Step(0) -- zero chance
   end
@@ -89,6 +93,10 @@ end
 
 local Tambla = sky.Object:extend()
 Tambla.TICK_EVENT = 'TAMBLA_TICK'
+Tambla.MODE_CHANGE_EVENT = 'TAMBLA_MODE'
+Tambla.MODE_PLAY = 1
+Tambla.MODE_EDIT = 2
+Tambla.MODE_MACRO = 3
 
 function Tambla:new(props)
   self.rows = {
@@ -97,20 +105,44 @@ function Tambla:new(props)
     Row{ n = 8  },
     Row{ n = 16 },
   }
+
   self.tick_period = props.tick_period or 1/32
 
   self:select_row(1)
   self:select_prop(1)
+  self:select_step(1)
+
   self.prop_codes = {'b', 'o', 'r', 'n',}
   self.prop_names = {'bend', 'offset', 'res', 'n'}
+
+  self.mode = Tambla.MODE_PLAY
+  self.mode_codes = {'P', 'E', 'M'}
 end
 
 -- row selection state
-function Tambla:select_row(i) self._selected_row = util.clamp(math.floor(i), 1, 4) end
+function Tambla:select_row(i)
+  self._selected_row = util.clamp(math.floor(i), 1, 4)
+  -- print("selected row", self._selected_row)
+end
 
 function Tambla:selected_row_idx() return self._selected_row end
 
 function Tambla:selected_row() return self.rows[self._selected_row] end
+
+function Tambla:selected_row_n() return self:selected_row().n end
+
+-- step selection state
+function Tambla:select_step(i)
+  self._selected_step = util.clamp(math.floor(i), 1, self:selected_row_n())
+  -- print("selected step", self._selected_step)
+end
+
+function Tambla:selected_step_idx() return self._selected_step end
+
+function Tambla:selected_step()
+  local r = self:selected_row()
+  return r.steps[self:selected_step_idx()]
+end
 
 -- property selection state
 function Tambla:select_prop(i) self._selected_prop = util.clamp(math.floor(i), 1, 4) end
@@ -122,7 +154,6 @@ end
 function Tambla:selected_prop_name()
   return self.prop_names[self._selected_prop]
 end
-
 
 function Tambla:selected_prop_value()
   local r = self:selected_row()
@@ -136,6 +167,22 @@ end
 
 function Tambla.is_tick(event)
   return event.type == Tambla.TICK_EVENT
+end
+
+function Tambla.mk_mode_change(which)
+  return { type = Tambla.MODE_CHANGE_EVENT, mode = which }
+end
+
+function Tambla.is_mode_change(event)
+  return event.type == Tambla.MODE_CHANGE_EVENT
+end
+
+function Tambla:select_mode(which)
+  self.mode = which
+end
+
+function Tambla:selected_mode_code()
+  return self.mode_codes[self.mode]
 end
 
 function Tambla:randomize()
@@ -217,7 +264,6 @@ function TamblaNoteGen:process(event, output, state)
   end
 end
 
-
 --
 -- RowWidget
 --
@@ -263,6 +309,18 @@ function RowWidget:draw(row, beats)
   screen.stroke()
 end
 
+function RowWidget:draw_step_selection(step)
+  local x = self.topleft[1] + ((step - 1) * self.STEP_WIDTH)
+  local y = self.topleft[2] + self.BAR_HEIGHT + 2
+  screen.level(5)
+  screen.rect(x + 1, y, self.BAR_WIDTH - 1, 3)
+  --screen.level(0)
+  --screen.move(x, y + 1)
+  --screen.line_rel(self.BAR_WIDTH - 1, 0)
+  screen.close()
+  screen.stroke()
+end
+
 local function layout_vertical(x, y, widgets)
   -- adjust the widget top/left origin such that they are arranged in a stack
   local top = y
@@ -281,27 +339,48 @@ local TamblaRender = sky.Object:extend()
 
 function TamblaRender:new(x, y, model)
   self.topleft = { x, y }
+
   self.model = model
   self.widgets = {}
   for i, r in ipairs(self.model.rows) do
     table.insert(self.widgets, RowWidget())
   end
   layout_vertical(x + 4, y, self.widgets)
-  screen.font_face(0)
-  screen.font_size(8)
+
+  self.mode_render = {self.render_play, self.render_edit, self.render_macro}
 end
 
-function TamblaRender:render(event, props)
+function TamblaRender:draw_mode()
+  -- mode indicator
+  screen.level(3)
+  screen.font_size(12)
+  --screen.font_face(7)
+  --screen.font_size(15)
+  screen.move(110, 58)
+  screen.text(self.model:selected_mode_code())
+end
+
+function TamblaRender:draw_rows(beat)
   local rows = self.model.rows
-  local beat = event.beat -- MAINT: redraw events always have beats?
   for i, r in ipairs(self.widgets) do
     r:draw(rows[i], beat)
   end
+end
 
+function TamblaRender:draw_caret()
   -- selection carat
   local y = self.model._selected_row * RowWidget.HEIGHT - 2
   screen.level(15)
   screen.rect(self.topleft[1], y, 2, 2)
+end
+
+function TamblaRender:render_play(event, props)
+  self:draw_rows(event.beat)
+  self:draw_caret()
+  self:draw_mode()
+
+  screen.font_face(0)
+  screen.font_size(8)
 
   -- property label
   local t = self.model:selected_prop_code()
@@ -314,7 +393,36 @@ function TamblaRender:render(event, props)
   screen.text(v)
 end
 
+function TamblaRender:draw_step_select()
+  local idx = self.model:selected_row_idx()
+  local widget = self.widgets[idx]
+  widget:draw_step_selection(self.model:selected_step_idx())
+
+
+  function Tambla:selected_step()
+    local r = self:selected_row()
+    return r.steps[self:selected_step_idx()]
+  end
+end
+
+function TamblaRender:render_edit(event, props)
+  self:draw_rows(event.beat)
+  self:draw_step_select()
+  self:draw_caret()
+  self:draw_mode()
+end
+
+function TamblaRender:render_macro(event, props)
+  screen.clear()
+end
+
+function TamblaRender:render(event, props)
+  local f = self.mode_render[self.model.mode]
+  f(self, event, props)
+end
+
 --
+-- Model and event processing chain
 --
 
 tambla = Tambla{
@@ -353,6 +461,10 @@ input1 = sky.Input{
   chain = main,
 }
 
+--
+-- TamblaControl
+--
+
 local TamblaControl = sky.Device:extend()
 
 function TamblaControl:new(model)
@@ -362,8 +474,15 @@ function TamblaControl:new(model)
   self.row_count = #model.rows
   self.row_acc = 1
 
+  self.step_acc = 1
+
   self.prop_count = 4 -- FIXME: get this from the model
   self.prop_acc = 1
+
+  self.key_z = {0, 0, 0}
+
+  self.mode_process_f = {self.process_play, self.process_edit, self.process_macro}
+  self:switch_mode(Tambla.MODE_PLAY)
 end
 
 function TamblaControl:add_row_params(i)
@@ -403,18 +522,134 @@ function TamblaControl:add_row_params(i)
   }
 end
 
+function TamblaControl:switch_mode(mode)
+  local f = self.mode_process_f[mode]
+  if f == nil then
+    error('invalid mode: ' .. tostring(mode))
+  end
+  self.mode_process = f
+  self.model:select_mode(mode)
+  return self.model.mk_mode_change(mode)
+end
+
 function TamblaControl:process(event, output, state)
+  -- print('process')
+  if sky.is_key(event) then
+    -- record key state for use in key chording ui
+    self.key_z[event.num] = event.z
+  end
+  self.mode_process(self, event, output, state)
+end
+
+function TamblaControl:process_edit(event, output, state)
+  -- print('process_edit')
   output(event)
   if sky.is_key(event) then
-    if event.num == 3 and event.z == 1 then
-      self.model:randomize()
-      output(sky.mk_redraw())
+    if event.num == 2 and event.z == 1 then
+      if self.key_z[1] == 1 then
+        -- key 2 w/ key 1 held
+        output(self:switch_mode(Tambla.MODE_PLAY))
+      elseif self.key_z[3] == 1 then
+        -- key 2 w/ key 3 held
+        print('randomize row')
+        local row = self.model:selected_row()
+        row:randomize()
+      else
+        -- key 2 action
+        print('k2 action')
+      end
+    elseif event.num == 3 and event.z == 1 then
+      if self.key_z[1] == 1 then
+        -- key 3 w/ key 1 held
+      elseif self.key_z[2] == 1 then
+        -- key 3 w/ key 2 held
+        print('clear row')
+        local row = self.model:selected_row()
+        row:clear()
+      else
+        -- key 3 action
+        print('k3 action')
+      end
     end
   elseif sky.is_enc(event) then
     if event.num == 1 then
-      self.row_acc = util.clamp(self.row_acc + (event.delta / 10), 1, self.row_count)
-      self.model:select_row(self.row_acc)
-      --print("select", self.model._selected_row)
+      if self.key_z[1] == 0 then
+        -- select step
+        self.step_acc = util.clamp(self.step_acc + (event.delta / 5), 1, self.model:selected_row_n())
+        self.model:select_step(self.step_acc)
+      else
+        -- select row
+        self.row_acc = util.clamp(self.row_acc + (event.delta / 10), 1, self.row_count)
+        self.model:select_row(self.row_acc)
+      end
+    elseif event.num == 2 then
+      -- tweak velocity
+      local step = self.model:selected_step()
+      if step ~= nil then
+        step:set_velocity(step.velocity + (event.delta / 20))
+        if step.velocity > 0 and not step:is_active() then
+          -- auto activate steps if velocity is non
+          step:set_chance(1)
+        elseif step.velocity == 0 and step:is_active() then
+          step:set_chance(0)
+        end
+      end
+    elseif event.num == 3 then
+      -- tweak duration
+      local step = self.model:selected_step()
+      if step ~= nil then
+        step:set_duration(step.duration + (event.delta / 20))
+      end
+    end
+  end
+end
+
+function TamblaControl:process_macro(event, output, state)
+  -- print('process_macro')
+  output(event)
+  if sky.is_key(event) then
+    if event.num == 3 and event.z == 1 then
+      if self.key_z[1] == 1 then
+        output(self:switch_mode(Tambla.MODE_PLAY))
+      else
+        -- key 3 action
+      end
+    end
+  end
+end
+
+function TamblaControl:process_play(event, output, state)
+  -- print('process_play')
+  output(event)
+  if sky.is_key(event) then
+    if event.num == 2 and event.z == 1 then
+      if self.key_z[1] == 1 then
+        output(self:switch_mode(Tambla.MODE_MACRO))
+        print("switch macro")
+      elseif self.key_z[3] == 1 then
+        -- key 2 w/ key 3 held
+        self.model:randomize()
+        output(sky.mk_redraw())
+      else
+        -- play, key 2 action
+        print("play key 2 action")
+      end
+    elseif event.num == 3 and event.z == 1 then
+      if self.key_z[1] == 1 then -- mode shift key
+        print("switch edit")
+        output(self:switch_mode(Tambla.MODE_EDIT))
+      else
+        -- play, key 3 action
+        print("play key 3 action")
+      end
+    end
+  elseif sky.is_enc(event) then
+    if event.num == 1 then
+      if self.key_z[1] == 1 then
+        self.row_acc = util.clamp(self.row_acc + (event.delta / 10), 1, self.row_count)
+        self.model:select_row(self.row_acc)
+        --print("select", self.model._selected_row)
+      end
     elseif event.num == 2 then
       self.prop_acc = util.clamp(self.prop_acc + (event.delta / 20), 1, self.prop_count)
       self.model:select_prop(self.prop_acc)
@@ -424,7 +659,7 @@ function TamblaControl:process(event, output, state)
       -- row:set_bend(row.bend + (event.delta / 100))
       -- print("bend", self.model._selected_row, row.bend)
       local idx = self.model:selected_row_idx()
-      local id = self.model:selected_prop_name() .. tostring(idx)
+      local id = self.model:selected_prop_name() .. tostring(idx) -- FIXME: avoid string construction?
       params:delta(id, event.delta)
     end
   end
@@ -434,7 +669,7 @@ controls = TamblaControl(tambla)
 
 input2 = sky.NornsInput{
   chain = sky.Chain{
-    -- sky.Logger{},
+    --sky.Logger{},
     controls,
     sky.Forward(display)
   },
