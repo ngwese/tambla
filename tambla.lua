@@ -315,7 +315,11 @@ function RowWidget:draw(row, beats)
   screen.fill()
 end
 
-function RowWidget:draw_step_selection(step)
+function RowWidget:draw_step_selection(row, step)
+  if step > row.n then
+      -- limit selection ui to end of row
+    step = row.n
+  end
   local x = self.topleft[1] + ((step - 1) * self.STEP_WIDTH)
   local y = self.topleft[2] + self.BAR_HEIGHT + 2
   screen.level(5)
@@ -388,8 +392,9 @@ end
 
 function TamblaRender:draw_step_select()
   local idx = self.model:selected_row_idx()
+  local row = self.model:selected_row()
   local widget = self.widgets[idx]
-  widget:draw_step_selection(self.model:selected_step_idx())
+  widget:draw_step_selection(row, self.model:selected_step_idx())
 end
 
 function TamblaRender:draw_param(y, name, value)
@@ -450,6 +455,7 @@ main = sky.Chain{
   sky.Switcher{
     which = 1,
     sky.Output{ name = "UM-ONE" },
+    sky.Output{ name = "ContinuuMini" },
     -- sky.PolySub{},
   },
   sky.Logger{
@@ -493,7 +499,6 @@ end
 
 function TamblaControl:add_row_params(i)
   local n = tostring(i)
-  -- params:add_separator('row ' .. n)
   params:add{type = 'option', id = 'chance' .. n, name = 'chance ' .. n,
     options = {'on', 'off'},
     default = 1
