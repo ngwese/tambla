@@ -311,7 +311,7 @@ function RowWidget:draw(row, beats)
   screen.close()
   screen.stroke()
   screen.level(15)
-  screen.pixel(self:width(row) + 2, y - 1)
+  screen.pixel(self:width(row) + 3, y - 1)
   screen.fill()
 end
 
