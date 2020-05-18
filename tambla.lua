@@ -17,22 +17,22 @@ local Step = sky.Object:extend()
 
 function Step:new(chance, velocity, duration)
   self:set_chance(chance or 0)      -- [0, 1] for probability
-  self:set_velocity(velocity or 1)  -- [0, 1]
-  self:set_duration(duration or 1)  -- [0, 1] where duration is a multiplier on 1/row.res
+  self:set_velocity(velocity or 0)  -- [0, 1]
+  self:set_duration(duration or 1)  -- [0.1, 1] where duration is a multiplier on 1/row.res
 end
 
 function Step:set_chance(c) self.chance = util.clamp(c, 0, 1) end
 function Step:set_velocity(v) self.velocity = util.clamp(v, 0, 1) end
-function Step:set_duration(d) self.duration = util.clamp(d, 0, 1) end
+function Step:set_duration(d) self.duration = util.clamp(d, 0.1, 1) end
 
 function Step:is_active()
-  return self.chance > 0
+  return self.chance > 0 and self.velocity > 0
 end
 
 function Step:clear()
   self.chance = 0
-  self.velocity = 1
-  self.duration = 1
+  self.velocity = 0
+  self.duration = 0.5
 end
 
 --
@@ -117,12 +117,12 @@ function Tambla:new(props)
 
   self.mode = Tambla.MODE_PLAY
   self.mode_codes = {'P', 'E', 'M'}
+  self.mode_names = {'play', 'edit', 'macro'}
 end
 
 -- row selection state
 function Tambla:select_row(i)
   self._selected_row = util.clamp(math.floor(i), 1, 4)
-  -- print("selected row", self._selected_row)
 end
 
 function Tambla:selected_row_idx() return self._selected_row end
@@ -134,7 +134,6 @@ function Tambla:selected_row_n() return self:selected_row().n end
 -- step selection state
 function Tambla:select_step(i)
   self._selected_step = util.clamp(math.floor(i), 1, self:selected_row_n())
-  -- print("selected step", self._selected_step)
 end
 
 function Tambla:selected_step_idx() return self._selected_step end
@@ -183,6 +182,10 @@ end
 
 function Tambla:selected_mode_code()
   return self.mode_codes[self.mode]
+end
+
+function Tambla:selected_mode_name()
+  return self.mode_names[self.mode]
 end
 
 function Tambla:randomize()
@@ -307,16 +310,16 @@ function RowWidget:draw(row, beats)
   screen.level(1)
   screen.close()
   screen.stroke()
+  screen.level(15)
+  screen.pixel(self:width(row) + 2, y - 1)
+  screen.fill()
 end
 
 function RowWidget:draw_step_selection(step)
   local x = self.topleft[1] + ((step - 1) * self.STEP_WIDTH)
   local y = self.topleft[2] + self.BAR_HEIGHT + 2
   screen.level(5)
-  screen.rect(x + 1, y, self.BAR_WIDTH - 1, 3)
-  --screen.level(0)
-  --screen.move(x, y + 1)
-  --screen.line_rel(self.BAR_WIDTH - 1, 0)
+  screen.rect(x + 1, y, self.BAR_WIDTH - 1, 2)
   screen.close()
   screen.stroke()
 end
@@ -336,6 +339,10 @@ end
 --
 
 local TamblaRender = sky.Object:extend()
+TamblaRender.PARAM_LEFT = 128
+TamblaRender.PARAM_SPACING = 8
+TamblaRender.LABEL_LEVEL = 3
+TamblaRender.VALUE_LEVEL = 12
 
 function TamblaRender:new(x, y, model)
   self.topleft = { x, y }
@@ -351,13 +358,11 @@ function TamblaRender:new(x, y, model)
 end
 
 function TamblaRender:draw_mode()
-  -- mode indicator
-  screen.level(3)
-  screen.font_size(12)
-  --screen.font_face(7)
-  --screen.font_size(15)
-  screen.move(110, 58)
-  screen.text(self.model:selected_mode_code())
+  screen.level(self.LABEL_LEVEL)
+  screen.font_face(0)
+  screen.font_size(8)
+  screen.move(self.PARAM_LEFT, 58)
+  screen.text_right(self.model:selected_mode_code())
 end
 
 function TamblaRender:draw_rows(beat)
@@ -378,31 +383,26 @@ function TamblaRender:render_play(event, props)
   self:draw_rows(event.beat)
   self:draw_caret()
   self:draw_mode()
-
-  screen.font_face(0)
-  screen.font_size(8)
-
-  -- property label
-  local t = self.model:selected_prop_code()
-  screen.move(110, 7)
-  screen.text(t)
-
-  -- property value
-  local v = self.model:selected_prop_value()
-  screen.move(110, 16)
-  screen.text(v)
+  self:draw_param(8, self.model:selected_prop_code(), self.model:selected_prop_value())
 end
 
 function TamblaRender:draw_step_select()
   local idx = self.model:selected_row_idx()
   local widget = self.widgets[idx]
   widget:draw_step_selection(self.model:selected_step_idx())
+end
 
-
-  function Tambla:selected_step()
-    local r = self:selected_row()
-    return r.steps[self:selected_step_idx()]
-  end
+function TamblaRender:draw_param(y, name, value)
+  screen.font_face(0)
+  screen.font_size(8)
+  screen.move(self.PARAM_LEFT, y)
+  screen.level(self.LABEL_LEVEL)
+  screen.text_right(name)
+  y = y + self.PARAM_SPACING
+  screen.move(self.PARAM_LEFT, y)
+  screen.level(self.VALUE_LEVEL)
+  screen.text_right(value)
+  return y + self.PARAM_SPACING
 end
 
 function TamblaRender:render_edit(event, props)
@@ -410,10 +410,16 @@ function TamblaRender:render_edit(event, props)
   self:draw_step_select()
   self:draw_caret()
   self:draw_mode()
+
+  local step = self.model:selected_step()
+  local y = 8
+  y = self:draw_param(y, 'v', util.round(step.velocity, 0.01))
+  y = self:draw_param(y, 'd', util.round(step.duration, 0.01))
+  y = self:draw_param(y, '%', util.round(step.chance, 0.01))
 end
 
 function TamblaRender:render_macro(event, props)
-  screen.clear()
+  self:draw_mode()
 end
 
 function TamblaRender:render(event, props)
@@ -533,7 +539,6 @@ function TamblaControl:switch_mode(mode)
 end
 
 function TamblaControl:process(event, output, state)
-  -- print('process')
   if sky.is_key(event) then
     -- record key state for use in key chording ui
     self.key_z[event.num] = event.z
@@ -542,7 +547,6 @@ function TamblaControl:process(event, output, state)
 end
 
 function TamblaControl:process_edit(event, output, state)
-  -- print('process_edit')
   output(event)
   if sky.is_key(event) then
     if event.num == 2 and event.z == 1 then
@@ -583,15 +587,21 @@ function TamblaControl:process_edit(event, output, state)
         self.model:select_row(self.row_acc)
       end
     elseif event.num == 2 then
-      -- tweak velocity
       local step = self.model:selected_step()
-      if step ~= nil then
-        step:set_velocity(step.velocity + (event.delta / 20))
-        if step.velocity > 0 and not step:is_active() then
-          -- auto activate steps if velocity is non
-          step:set_chance(1)
-        elseif step.velocity == 0 and step:is_active() then
-          step:set_chance(0)
+      if self.key_z[2] == 1 then
+        -- tweak chance
+        if step ~= nil then
+          step:set_chance(step.chance + (event.delta / 20))
+        end
+      else
+        -- tweak velocity
+        if step ~= nil then
+          step:set_velocity(step.velocity + (event.delta / 20))
+          if step.velocity > 0 and not step:is_active() then
+            -- auto set chance to 100% steps if velocity is non-zero but step is
+            -- inactive
+            step:set_chance(1)
+          end
         end
       end
     elseif event.num == 3 then
@@ -605,7 +615,6 @@ function TamblaControl:process_edit(event, output, state)
 end
 
 function TamblaControl:process_macro(event, output, state)
-  -- print('process_macro')
   output(event)
   if sky.is_key(event) then
     if event.num == 3 and event.z == 1 then
@@ -619,7 +628,6 @@ function TamblaControl:process_macro(event, output, state)
 end
 
 function TamblaControl:process_play(event, output, state)
-  -- print('process_play')
   output(event)
   if sky.is_key(event) then
     if event.num == 2 and event.z == 1 then
@@ -648,18 +656,18 @@ function TamblaControl:process_play(event, output, state)
       if self.key_z[1] == 1 then
         self.row_acc = util.clamp(self.row_acc + (event.delta / 10), 1, self.row_count)
         self.model:select_row(self.row_acc)
-        --print("select", self.model._selected_row)
       end
     elseif event.num == 2 then
-      self.prop_acc = util.clamp(self.prop_acc + (event.delta / 20), 1, self.prop_count)
+      self.prop_acc = util.clamp(self.prop_acc + (event.delta / 10), 1, self.prop_count)
       self.model:select_prop(self.prop_acc)
-      --print("prop", self.model:selected_prop_name())
     elseif event.num == 3 then
-      -- local row = self.model:selected_row()
-      -- row:set_bend(row.bend + (event.delta / 100))
-      -- print("bend", self.model._selected_row, row.bend)
       local idx = self.model:selected_row_idx()
       local id = self.model:selected_prop_name() .. tostring(idx) -- FIXME: avoid string construction?
+      local delta = event.delta
+      if self.key_z[3] == 1 then
+        -- fine tuning
+        delta = delta / 10.0
+      end
       params:delta(id, event.delta)
     end
   end
