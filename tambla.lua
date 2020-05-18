@@ -35,6 +35,14 @@ function Step:clear()
   self.duration = 0.5
 end
 
+function Step:load(props)
+  self:new(props.chance, props.velocity, props.duration)
+end
+
+function Step:store()
+  return { __type = 'Step', chance = self.chance, velocity = self.velocity, duration = self.duration }
+end
+
 --
 -- Row
 --
@@ -86,6 +94,22 @@ end
 function Row:step_index(beats)
   return 1 + math.floor(self:head_position(beats) * self.n)
 end
+
+function Row:load(props)
+  self:new(props)
+  for i, s in ipairs(props.steps) do
+    self.steps[i]:load(props.steps[i])
+  end
+end
+
+function Row:store()
+  local steps = {}
+  for i, s in ipairs(self.steps) do
+    table.insert(steps, s:store())
+  end
+  return { __type = 'Row', n = self.n, res = self.res, bend = self.bend, offset = self.offset, steps = steps }
+end
+
 
 --
 -- Tambla
@@ -194,6 +218,20 @@ function Tambla:randomize()
   end
 end
 
+function Tambla:store()
+  local rows = {}
+  for i, r in ipairs(self.rows) do
+    table.insert(rows, r:store())
+  end
+  return { __type = 'Tambla', rows = rows, tick_period = self.tick_period }
+end
+
+function Tambla:load(props)
+  self:new(props)
+  for i,r in ipairs(props.rows) do
+    r:load(props.rows[i])
+  end
+end
 
 --
 -- TamblaNoteGen
