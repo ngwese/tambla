@@ -48,6 +48,7 @@ end
 --
 
 local Row = sky.Object:extend()
+Row.MAX_STEPS = 16
 
 local MAX_STEPS = 16
 
@@ -67,7 +68,7 @@ function Row:set_bend(b) self.bend = util.clamp(b, 0.2, 5) end
 function Row:set_offset(o) self.offset = math.floor(o) end
 
 function Row:clear()
-  for i = 1, MAX_STEPS do
+  for i = 1, self.MAX_STEPS do
     self.steps[i] = Step(0) -- zero chance
   end
 end
@@ -116,6 +117,7 @@ end
 --
 
 local Tambla = sky.Object:extend()
+Tambla.NUM_ROWS = 4
 Tambla.TICK_EVENT = 'TAMBLA_TICK'
 Tambla.MODE_CHANGE_EVENT = 'TAMBLA_MODE'
 Tambla.MODE_PLAY = 1
@@ -146,7 +148,7 @@ end
 
 -- row selection state
 function Tambla:select_row(i)
-  self._selected_row = util.clamp(math.floor(i), 1, 4)
+  self._selected_row = util.clamp(math.floor(i), 1, self.NUM_ROWS)
 end
 
 function Tambla:selected_row_idx() return self._selected_row end
@@ -245,7 +247,7 @@ function TamblaNoteGen:new(model)
   self._scheduler = nil
   self._notes = {}
   self._last_index = {}
-  for i = 1, #self.model.rows do
+  for i = 1, self.model.NUM_ROWS do
     self._last_index[i] = 0
   end
 end
