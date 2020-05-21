@@ -8,6 +8,7 @@ sky.use('sky/lib/engine/polysub')
 --local halfsecond = include('awake/lib/halfsecond')
 local fmt = require('formatters')
 local cs = require('controlspec')
+local fs = require('fileselect')
 
 --
 -- Step
@@ -49,8 +50,6 @@ end
 
 local Row = sky.Object:extend()
 Row.MAX_STEPS = 16
-
-local MAX_STEPS = 16
 
 function Row:new(props)
   self:set_n(props.n or 8)
@@ -539,38 +538,66 @@ end
 
 function TamblaControl:add_row_params(i)
   local n = tostring(i)
-  params:add{type = 'option', id = 'chance' .. n, name = 'chance ' .. n,
+  params:add_group('row ' .. n, 7)
+  params:add{type = 'option', id = 'chance' .. n, name = 'chance',
     options = {'on', 'off'},
     default = 1
   }
-  params:add{type = 'option', id = 'velocity_mod' .. n, name = 'velocity mod ' .. n,
+  params:add{type = 'option', id = 'velocity_mod' .. n, name = 'velocity mod',
     options = {'on', 'off'},
     default = 1
   }
-  params:add{type = 'option', id = 'length_mod' .. n, name = 'length mod ' .. n,
+  params:add{type = 'option', id = 'length_mod' .. n, name = 'length mod',
     options = {'on', 'off'},
     default = 1
   }
-  params:add{type = 'control', id = 'bend' .. n, name = 'bend ' .. n,
+  params:add{type = 'control', id = 'bend' .. n, name = 'bend',
     controlspec = cs.new(0.2, 5.0, 'lin', 0.005, 1.0, ''),
     formatter = fmt.round(0.01),
     action = function(v) self.model.rows[i]:set_bend(v) end,
   }
-  params:add{type = 'control', id = 'n' .. n, name = 'n ' .. n,
+  params:add{type = 'control', id = 'n' .. n, name = 'n',
     controlspec = cs.new(2, 16, 'lin', 1, 16, ''),
     formatter = fmt.round(1),
     action = function(v) self.model.rows[i]:set_n(v) end,
   }
-  params:add{type = 'control', id = 'res' .. n, name = 'res ' .. n,
+  params:add{type = 'control', id = 'res' .. n, name = 'res',
     controlspec = cs.new(4, 32, 'lin', 1, 4, ''),
     formatter = fmt.round(1),
     action = function(v) self.model.rows[i]:set_res(v) end,
   }
-  params:add{type = 'control', id = 'offset' .. n, name = 'offset ' .. n,
+  params:add{type = 'control', id = 'offset' .. n, name = 'offset',
     controlspec = cs.new(-16, 16, 'lin', 1, 0, ''),
     formatter = fmt.round(1),
     action = function(v) self.model.rows[i]:set_offset(v) end,
   }
+end
+
+function TamblaControl:add_params()
+  params:add_separator('tambla')
+
+  params:add_file('pattern', 'pattern', 'foo.json')
+  params:add_text('pattern_name', 'name', 'blah')
+
+  --
+  params:add_trigger('pattern_load', 'load...')
+  params:set_action('pattern_load', function()
+    local start = paths.this.data
+    fs.enter(start, function(path)
+      params:set('pattern_name', path)
+      print('got: ', path)
+    end)
+  end)
+
+  params:add_trigger('pattern_save', 'save')
+  params:set_action('pattern_save', function()
+    local name = params:string('pattern_name')
+    print('save pattern:', name)
+  end)
+
+  for i = 1, self.model.NUM_ROWS do
+    controls:add_row_params(i)
+  end
 end
 
 function TamblaControl:switch_mode(mode)
@@ -743,9 +770,7 @@ function init()
   -- params:set('amprel', 0.1)
 
   -- tambla
-  for i = 1,4 do
-    controls:add_row_params(i)
-  end
+  controls:add_params()
 
   tambla:randomize()
 end
