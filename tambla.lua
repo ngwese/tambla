@@ -225,7 +225,7 @@ function Tambla:store()
   for i, r in ipairs(self.rows) do
     table.insert(rows, r:store())
   end
-  return { __type = 'Tambla', rows = rows, tick_period = self.tick_period }
+  return { __type = 'Tambla', tempo = clock.get_tempo(), rows = rows, tick_period = self.tick_period }
 end
 
 function Tambla:load(props)
