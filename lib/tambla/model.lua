@@ -104,6 +104,7 @@ end
 
 local Tambla = sky.Object:extend()
 Tambla.NUM_ROWS = 4
+Tambla.NUM_SLOTS = 4
 Tambla.TICK_EVENT = 'TAMBLA_TICK'
 
 function Tambla:new(props)

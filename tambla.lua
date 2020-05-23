@@ -61,8 +61,7 @@ input1 = sky.Input{
 
 input2 = sky.NornsInput{
   chain = sky.Chain{
-    --sky.Logger{},
-    ui:process_router(),
+    ui:event_router(),
     sky.Forward(display)
   },
 }
