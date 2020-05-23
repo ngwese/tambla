@@ -413,23 +413,18 @@ end
 local function gather_files(dir, glob, static)
   local t = {}
   local filter = function(results)
-    -- print('gather: "' .. results .. '"')
     for path in results:gmatch("[^\r\n]+") do
-      table.insert(t, path)
-      print('p: ', path)
+      local p = string.gsub(path, dir, '')
+      table.insert(t, p)
     end
   end
   local cmd = 'find ' .. dir .. ' -name "' .. glob .. '" | sort'
-  norns.system_cmd(cmd, filter)
-  print('before:')
-  tab.print(t)
+  filter(util.os_capture(cmd, true))
   if static then
     for _, v in ipairs(static) do
       table.insert(t, v)
     end
   end
-  print('after:')
-  tab.print(t)
   return t
 end
 
@@ -479,10 +474,6 @@ function MacroPage:enter(props)
   SetSelector:refresh()
   PatternSelector:refresh()
   print('refresh end')
-  print('sets:')
-  tab.print(SetSelector.values)
-  print('pats:')
-  tab.print(PatternSelector.values)
 end
 
 function MacroPage:select_slot(i)
@@ -495,12 +486,7 @@ end
 
 function MacroPage:select_action(i)
   self._action = util.clamp(math.floor(i), 1, #self.actions)
-  local selector = self:selected_action()[2]
-  if selector then
-    self._action_value = selector:value()
-  else
-    self._action_value = nil
-  end
+  self._selector = self:selected_action()[2]
 end
 
 function MacroPage:selected_action()
@@ -512,11 +498,14 @@ function MacroPage:selected_action_name()
 end
 
 function MacroPage:selected_action_value()
-  return self._action_value
+  if self._selector then
+    return self._selector:value()
+  end
+  return ''
 end
 
 function MacroPage:draw_action()
-  screen.level(6)
+  screen.level(4)
   screen.font_face(0)
   screen.font_size(8)
   screen.move(4, 48)
@@ -526,7 +515,7 @@ end
 function MacroPage:draw_action_value()
   local v = self:selected_action_value()
   if v then
-    screen.level(6)
+    screen.level(10)
     screen.font_face(0)
     screen.font_size(8)
     screen.move(10, 58)
