@@ -15,14 +15,14 @@ tambla = model.Tambla{
   tick_period = 1/64,
 }
 
-control_state = pages.ControlState(tambla)
+controller = pages.Controller(tambla)
 
 ui = sky.PageRouter{
   initial = 'play',
   pages = {
-    macro = pages.MacroPage(tambla, control_state),
-    play = pages.PlayPage(tambla, control_state),
-    edit = pages.EditPage(tambla, control_state),
+    macro = pages.MacroPage(tambla, controller),
+    play = pages.PlayPage(tambla, controller),
+    edit = pages.EditPage(tambla, controller),
   }
 }
 
@@ -81,7 +81,6 @@ function init()
   -- params:set('amprel', 0.1)
 
   -- tambla
-  control_state:add_params()
-  tambla:randomize()
+  controller:add_params()
 end
 

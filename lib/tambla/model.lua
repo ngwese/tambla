@@ -83,13 +83,6 @@ function Row:step_index(beats)
   return 1 + math.floor(self:head_position(beats) * self.n)
 end
 
-function Row:load(props)
-  self:new(props)
-  for i, s in ipairs(props.steps) do
-    self.steps[i]:load(props.steps[i])
-  end
-end
-
 function Row:store()
   local steps = {}
   for i, s in ipairs(self.steps) do
@@ -98,71 +91,98 @@ function Row:store()
   return { __type = 'Row', n = self.n, res = self.res, bend = self.bend, offset = self.offset, steps = steps }
 end
 
+function Row:load(props)
+  if props.__type ~= 'Row' then
+    error('cannot load row: incorrect type')
+  end
+
+  self:new(props)
+  self.steps = {}
+  for i, s in ipairs(props.steps) do
+    local step = Step()
+    step:load(s)
+    table.insert(self.steps, step)
+  end
+end
+
 --
--- Tambla
+-- Pattern
 --
 
-local Tambla = sky.Object:extend()
-Tambla.NUM_ROWS = 4
-Tambla.NUM_SLOTS = 4
-Tambla.TICK_EVENT = 'TAMBLA_TICK'
+local Pattern = sky.Object:extend()
+Pattern.NUM_ROWS = 4
+Pattern.MODEL_VERSION = 1
 
-function Tambla:new(props)
+function Pattern:new(props)
   self.rows = {
     Row{ n = 16 },
     Row{ n = 8  },
     Row{ n = 8  },
     Row{ n = 16 },
   }
+end
 
+function Pattern:randomize()
+  for i, r in ipairs(self.rows) do
+    r:randomize()
+  end
+end
+
+function Pattern:store()
+  local rows = {}
+  for i, r in ipairs(self.rows) do
+    table.insert(rows, r:store())
+  end
+  return { __type = 'Pattern', __version = self.MODEL_VERSION, rows = rows }
+end
+
+function Pattern:load(props)
+  if props.__type ~= 'Pattern' and props.__version ~= self.MODEL_VERSION then
+    error('cannot load pattern: incorrect type or version')
+  end
+
+  self:new(props)
+  self.rows = {}
+  for i, r in ipairs(props.rows) do
+    local row = Row(r)
+    row:load(r)
+    table.insert(self.rows, row)
+  end
+end
+
+--
+-- Tambla
+--
+local Tambla = sky.Object:extend()
+Tambla.NUM_ROWS = Pattern.NUM_ROWS
+Tambla.NUM_SLOTS = 1 -- eventually 4 (or more)
+Tambla.TICK_EVENT = 'TAMBLA_TICK'
+Tambla.MODEL_VERSION = 1
+
+function Tambla:new(props)
   self.tick_period = props.tick_period or 1/32
-
-  self:select_row(1)
-  self:select_prop(1)
-  self:select_step(1)
-
-  self.prop_codes = {'b', 'o', 'r', 'n',}
-  self.prop_names = {'bend', 'offset', 'res', 'n'}
+  self.slots = {}
+  if props.slots then
+    for _, p in ipairs(props.slots) do
+      table.insert(self.slots, p)
+    end
+  else
+    local p = Pattern()
+    p:randomize()
+    table.insert(self.slots, p)
+  end
+  self:select_slot(1)
 end
 
--- row selection state
-function Tambla:select_row(i)
-  self._selected_row = util.clamp(math.floor(i), 1, self.NUM_ROWS)
+function Tambla:slot(num)
+  if num ~= nil then
+    return self.slots[num]
+  end
+  return self.slots[self._selected_slot]
 end
 
-function Tambla:selected_row_idx() return self._selected_row end
-
-function Tambla:selected_row() return self.rows[self._selected_row] end
-
-function Tambla:selected_row_n() return self:selected_row().n end
-
--- step selection state
-function Tambla:select_step(i)
-  self._selected_step = util.clamp(math.floor(i), 1, self:selected_row_n())
-end
-
-function Tambla:selected_step_idx() return self._selected_step end
-
-function Tambla:selected_step()
-  local r = self:selected_row()
-  return r.steps[self:selected_step_idx()]
-end
-
--- property selection state
-function Tambla:select_prop(i) self._selected_prop = util.clamp(math.floor(i), 1, 4) end
-
-function Tambla:selected_prop_code()
-  return self.prop_codes[self._selected_prop]
-end
-
-function Tambla:selected_prop_name()
-  return self.prop_names[self._selected_prop]
-end
-
-function Tambla:selected_prop_value()
-  local r = self:selected_row()
-  local k = self.prop_names[self._selected_prop]
-  return r[k]
+function Tambla:select_slot(i)
+  self._selected_slot = util.clamp(math.floor(i), 1, Tambla.NUM_SLOTS)
 end
 
 function Tambla.mk_tick()
@@ -173,32 +193,36 @@ function Tambla.is_tick(event)
   return event.type == Tambla.TICK_EVENT
 end
 
-function Tambla:randomize()
-  for i, r in ipairs(self.rows) do
-    r:randomize()
-  end
-end
-
 function Tambla:store()
-  local rows = {}
-  for i, r in ipairs(self.rows) do
-    table.insert(rows, r:store())
+  local slots = {}
+  for i, s in ipairs(self.slots) do
+    table.insert(slots, s:store())
   end
-  return { __type = 'Tambla', tempo = clock.get_tempo(), rows = rows, tick_period = self.tick_period }
+  return { __type = 'Tambla', __version = self.MODEL_VERSION, tempo = clock.get_tempo(), slots = slots, tick_period = self.tick_period }
 end
 
 function Tambla:load(props)
+  if props.__type ~= 'Tambla' and props.__version ~= self.MODEL_VERSION then
+    error('cannot load set: incorrect type or version')
+  end
+
   self:new(props)
-  for i,r in ipairs(props.rows) do
-    r:load(props.rows[i])
+  self.slots = {}
+  for i, s in ipairs(props.slots) do
+    local p = Pattern(s)
+    p:load(s)
+    table.insert(self.slots, p)
   end
 end
+
+
 
 --
 -- module
 --
 return {
   Tambla = Tambla,
+  Pattern = Pattern,
   Row = Row,
   Step = Step,
 }

@@ -38,7 +38,7 @@ function TamblaNoteGen:process(event, output, state)
     output(event) -- pass the tick along
     -- determine if a not should be generated
     local beat = event.beat
-    for i, r in ipairs(self.model.rows) do
+    for i, r in ipairs(self.model:slot().rows) do
       local idx = r:step_index(beat)
       if idx ~= self._last_index[i] then
         -- we are at a new step
