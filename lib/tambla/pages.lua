@@ -680,6 +680,7 @@ function MacroPage:do_save_pat(what)
     sky.set_focus(false)
     te.enter(function(path)
       if path then _save(path) end
+      PatternSelector:refresh()
       sky.set_focus(true)
     end, 'pat')
   else
