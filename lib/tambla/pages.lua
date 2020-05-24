@@ -802,6 +802,15 @@ function Controller:selected_prop_value()
   return r[k]
 end
 
+-- input / output devices
+function Controller:set_input_device(device)
+  self.input_device = device
+end
+
+function Controller:set_output_switcher(device)
+  self.output_switcher = device
+end
+
 -- parameters
 
 function Controller:add_row_params(i)
@@ -832,7 +841,27 @@ end
 function Controller:add_params()
   params:add_separator('tambla')
 
-  params:add{type = 'control', id = 'slot', name = 'slot',
+  params:add{type = "number", id = "midi_in_device", name = "midi input",
+    min = 1, max = 4, default = 1,
+    action = function(v)
+      if self.input_device then
+        self.input_device:set_device(midi.connect(v))
+      end
+    end,
+  }
+
+  params:add{type = "number", id = "midi_out_device", name = "midi output",
+    min = 1, max = 4, default = 2,
+    action = function(v)
+      if self.output_switcher then
+        -- MAINT: this code assumes the first device in the switcher is an
+        -- Output
+        self.output_switcher[1]:set_device(midi.connect(v))
+      end
+    end,
+  }
+
+  params:add{type = 'control', id = 'active_pattern', name = 'active pattern',
     controlspec = cs.new(1, 4, 'lin', 1, 1, ''),
     formatter = fmt.round(1),
     action = function(v) self.model:select_slot(v) end,

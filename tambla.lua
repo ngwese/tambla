@@ -54,16 +54,17 @@ display = sky.Chain{
   }
 }
 
+outputs = sky.Switcher{
+  which = 1,
+  sky.Output{},
+  sky.PolySub{},
+}
+
 main = sky.Chain{
   sky.Held{ debug = false },
   devices.TamblaNoteGen(tambla, controller),
   sky.MakeNote{},
-  sky.Switcher{
-    which = 1,
-    sky.Output{ name = "UM-ONE" },
-    sky.Output{ name = "ContinuuMini" },
-    -- sky.PolySub{},
-  },
+  outputs,
   sky.Logger{
     bypass = true,
     filter = tambla.is_tick,
@@ -74,10 +75,7 @@ main = sky.Chain{
   sky.Forward(display),
 }
 
-input1 = sky.Input{
-  name = "AXIS-64",
-  chain = main,
-}
+input1 = sky.Input{ chain = main }
 
 input2 = sky.NornsInput{
   chain = sky.Chain{
@@ -97,10 +95,13 @@ function init()
   params:set('delay', 0.13)
   params:set('delay_rate', 0.95)
   params:set('delay_feedback', 0.27)
+
   -- polysub
-  -- params:set('amprel', 0.1)
+  params:set('amprel', 0.1)
 
   -- tambla
+  controller:set_input_device(input1)
+  controller:set_output_switcher(outputs)
   controller:add_params()
 end
 
