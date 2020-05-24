@@ -13,6 +13,12 @@ local devices = include('sky/lib/tambla/devices')
 
 tambla = model.Tambla{
   tick_period = 1/64,
+  slots = {
+    model.Pattern():randomize(),
+    model.Pattern(),
+    model.Pattern(),
+    model.Pattern()
+  }
 }
 
 controller = pages.Controller(tambla)

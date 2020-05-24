@@ -142,6 +142,14 @@ function PageBase:draw_param(y, name, value)
   return y + self.PARAM_SPACING
 end
 
+function PageBase:draw_slot_num()
+  local num = self.model:selected_slot_idx()
+  screen.font_size(16)
+  screen.move(118, 40)
+  screen.level(self.VALUE_LEVEL)
+  screen.text_center(num)
+end
+
 function PageBase:process(event, output, state, props)
   self.controller:process(event, output, state, props)
   output(event)
@@ -156,6 +164,8 @@ local PlayPage = PageBase:extend()
 function PlayPage:new(model, controller)
   PlayPage.super.new(self, model, controller)
   self.page_code = 'P'
+
+  self.slot_acc = 1
 end
 
 function PlayPage:draw(event, props)
@@ -163,6 +173,7 @@ function PlayPage:draw(event, props)
   self:draw_caret()
   self:draw_mode()
   self:draw_param(8, self.controller:selected_prop_code(), self.controller:selected_prop_value())
+  self:draw_slot_num()
 end
 
 function PlayPage:process(event, output, state, props)
@@ -196,6 +207,9 @@ function PlayPage:process(event, output, state, props)
       if key_z[1] == 1 then
         self.controller.row_acc = util.clamp(self.controller.row_acc + (event.delta / 10), 1, self.controller.row_count)
         self.controller:select_row(self.controller.row_acc)
+      else
+        self.slot_acc = util.clamp(self.slot_acc + (event.delta / 10), 1, self.model:slot_count())
+        self.model:select_slot(self.slot_acc)
       end
     elseif event.num == 2 then
       controller.prop_acc = util.clamp(controller.prop_acc + (event.delta / 10), 1, controller.prop_count)
@@ -402,7 +416,7 @@ function NumWidget:draw(levels, selected)
   screen.stroke()
   screen.move(x + half_dim - 2, y + half_dim + 4)
   if selected then screen.level(self.SELECTED_LEVEL) end
-  screen.font_size(14)
+  screen.font_size(16)
   screen.text_center(self.num)
 
   if selected then
@@ -526,7 +540,7 @@ function MacroPage:enter(props)
 end
 
 function MacroPage:select_slot(i)
-  self._slot = util.clamp(math.floor(i), 1, self.model.NUM_SLOTS)
+  self._slot = util.clamp(math.floor(i), 1, self.model:slot_count())
 end
 
 function MacroPage:selected_slot()
@@ -578,7 +592,7 @@ end
 
 function MacroPage:draw(event, props)
   local selected = self:selected_slot()
-  for n = 1,self.model.NUM_SLOTS do
+  for n = 1,self.model:slot_count() do
     self.slots[n]:draw(nil, n == selected)
   end
   self:draw_action()
@@ -606,7 +620,7 @@ function MacroPage:process(event, output, state, props)
   elseif sky.is_enc(event) then
     if event.num == 1 then
       if key_z[1] == 0 then
-        self.slot_acc = util.clamp(self.slot_acc + (event.delta / 10), 1, self.model.NUM_SLOTS)
+        self.slot_acc = util.clamp(self.slot_acc + (event.delta / 10), 1, self.model:slot_count())
         self:select_slot(self.slot_acc)
       end
     elseif event.num == 2 then
@@ -721,6 +735,9 @@ function Controller:new(model)
   self.prop_acc = 1
   self:select_prop(1)
 
+  self.slot_acc = 1
+  self.model:select_slot(1)
+
   self.key_z = {0, 0, 0}
 end
 
@@ -814,7 +831,7 @@ function Controller:add_row_params(i)
   params:add{type = 'control', id = 'offset' .. n, name = 'offset',
     controlspec = cs.new(-16, 16, 'lin', 1, 0, ''),
     formatter = fmt.round(1),
-    action = function(v) self.model:slo().rows[i]:set_offset(v) end,
+    action = function(v) self.model:slot().rows[i]:set_offset(v) end,
   }
 end
 

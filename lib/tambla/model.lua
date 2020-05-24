@@ -72,6 +72,7 @@ function Row:randomize()
       s:clear()
     end
   end
+  return self
 end
 
 function Row:head_position(beats)
@@ -126,6 +127,7 @@ function Pattern:randomize()
   for i, r in ipairs(self.rows) do
     r:randomize()
   end
+  return self
 end
 
 function Pattern:store()
@@ -155,7 +157,7 @@ end
 --
 local Tambla = sky.Object:extend()
 Tambla.NUM_ROWS = Pattern.NUM_ROWS
-Tambla.NUM_SLOTS = 1 -- eventually 4 (or more)
+Tambla.MAX_SLOTS = 4
 Tambla.TICK_EVENT = 'TAMBLA_TICK'
 Tambla.MODEL_VERSION = 1
 
@@ -171,6 +173,7 @@ function Tambla:new(props)
     p:randomize()
     table.insert(self.slots, p)
   end
+  self._slot_count = #self.slots
   self:select_slot(1)
 end
 
@@ -181,8 +184,16 @@ function Tambla:slot(num)
   return self.slots[self._selected_slot]
 end
 
+function Tambla:slot_count()
+  return self._slot_count
+end
+
 function Tambla:select_slot(i)
-  self._selected_slot = util.clamp(math.floor(i), 1, Tambla.NUM_SLOTS)
+  self._selected_slot = util.clamp(math.floor(i), 1, self._slot_count)
+end
+
+function Tambla:selected_slot_idx()
+  return self._selected_slot
 end
 
 function Tambla.mk_tick()
