@@ -146,7 +146,8 @@ function PageBase:draw_slot_num()
   local num = self.model:selected_slot_idx()
   screen.font_size(16)
   screen.move(118, 40)
-  screen.level(self.VALUE_LEVEL)
+  --screen.level(self.VALUE_LEVEL)
+  screen.level(2)
   screen.text_center(num)
 end
 
@@ -657,7 +658,7 @@ function MacroPage:do_load_pat(what)
       local data = f:read()
       f:close()
       local props = json.decode(data)
-      self.model:slot():load(props)
+      self.model:slot(self._slot):load(props)
     end
   end
 
