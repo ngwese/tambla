@@ -211,6 +211,7 @@ function PlayPage:process(event, output, state, props)
       else
         self.slot_acc = util.clamp(self.slot_acc + (event.delta / 10), 1, self.model:slot_count())
         self.model:select_slot(self.slot_acc)
+        params:set('slot', self.model:selected_slot_idx(), true)
       end
     elseif event.num == 2 then
       controller.prop_acc = util.clamp(controller.prop_acc + (event.delta / 10), 1, controller.prop_count)
@@ -739,6 +740,10 @@ function Controller:new(model)
   self.slot_acc = 1
   self.model:select_slot(1)
 
+  self.chance_mod = true
+  self.velocity_mod = true
+  self.length_mod = true
+
   self.key_z = {0, 0, 0}
 end
 
@@ -801,19 +806,7 @@ end
 
 function Controller:add_row_params(i)
   local n = tostring(i)
-  params:add_group('row ' .. n, 7)
-  params:add{type = 'option', id = 'chance' .. n, name = 'chance',
-    options = {'on', 'off'},
-    default = 1
-  }
-  params:add{type = 'option', id = 'velocity_mod' .. n, name = 'velocity mod',
-    options = {'on', 'off'},
-    default = 1
-  }
-  params:add{type = 'option', id = 'length_mod' .. n, name = 'length mod',
-    options = {'on', 'off'},
-    default = 1
-  }
+  params:add_group('row ' .. n, 4)
   params:add{type = 'control', id = 'bend' .. n, name = 'bend',
     controlspec = cs.new(0.2, 5.0, 'lin', 0.005, 1.0, ''),
     formatter = fmt.round(0.01),
@@ -839,35 +832,25 @@ end
 function Controller:add_params()
   params:add_separator('tambla')
 
-  -- params:add_file('file', 'file', 'foo.json')
-
-  -- params:add_trigger('state_load', 'load...')
-  -- params:set_action('state_load', function()
-  --   local start = paths.this.data
-  --   fs.enter(start, function(path)
-  --     params:set('pattern_name', path)
-  --     print('got: ', path)
-  --   end)
-  -- end)
-
-  -- params:add_trigger('state_save', 'save...')
-  -- params:set_action('state_save', function()
-  --   local name = params:string('pattern')
-  --   local cb = function(result)
-  --     print('got: ', result)
-  --   end
-  --   te.enter(cb, name, 'save')
-  --   --print('save Controller:', name)
-  -- end)
-
-  params:add{type = 'control', id = 'pattern', name = 'pattern',
-    controlspec = cs.new(1, 4, 'lin', 1, 4, ''),
+  params:add{type = 'control', id = 'slot', name = 'slot',
+    controlspec = cs.new(1, 4, 'lin', 1, 1, ''),
     formatter = fmt.round(1),
-    action = function(v)
-      -- FIXME: restore slot selection state on model so that it can be a
-      -- performance control via parameter mapping
-      --self.controller:select_slot(v)
-    end,
+    action = function(v) self.model:select_slot(v) end,
+  }
+  params:add{type = 'option', id = 'chance', name = 'chance',
+    options = {'on', 'off'},
+    default = 2,
+    action = function(v) self.chance_mod = v == 1 end,
+  }
+  params:add{type = 'option', id = 'velocity_mod', name = 'velocity mod',
+    options = {'on', 'off'},
+    default = 1,
+    action = function(v) self.velocity_mod = v == 1 end,
+  }
+  params:add{type = 'option', id = 'length_mod', name = 'length mod',
+    options = {'on', 'off'},
+    default = 1,
+    action = function(v) self.length_mod = v == 1 end,
   }
 
   for i = 1, self.model.NUM_ROWS do

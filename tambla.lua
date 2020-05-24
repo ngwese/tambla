@@ -1,3 +1,17 @@
+-- bending rhythmic arpeggio
+-- 1.0.0 @ngwese
+-- <url>
+--
+-- E1 select slot
+-- E2 row param
+-- E3 row param value
+--
+-- K1 = ALT
+-- ALT-E1 = select row
+-- ALT-K2 = page left
+-- ALT-K3 = page right
+--
+
 include('sky/lib/prelude')
 sky.use('sky/lib/device/make_note')
 sky.use('sky/lib/device/arp')
@@ -42,7 +56,7 @@ display = sky.Chain{
 
 main = sky.Chain{
   sky.Held{ debug = false },
-  devices.TamblaNoteGen(tambla),
+  devices.TamblaNoteGen(tambla, controller),
   sky.MakeNote{},
   sky.Switcher{
     which = 1,

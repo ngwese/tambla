@@ -4,9 +4,11 @@
 
 local TamblaNoteGen = sky.Device:extend()
 
-function TamblaNoteGen:new(model)
+function TamblaNoteGen:new(model, controller)
   TamblaNoteGen.super.new(self)
   self.model = model
+  self.controller = controller
+  self.default_duration = 1/16
   self._scheduler = nil
   self._notes = {}
   self._last_index = {}
@@ -36,27 +38,32 @@ end
 function TamblaNoteGen:process(event, output, state)
   if self.model.is_tick(event) then
     output(event) -- pass the tick along
-    -- determine if a not should be generated
+
     local beat = event.beat
+    local chance_off = not self.controller.chance_mod
+    local velocity_on = self.controller.velocity_mod
+    local length_on = self.controller.length_mod
+
     for i, r in ipairs(self.model:slot().rows) do
       local idx = r:step_index(beat)
       if idx ~= self._last_index[i] then
         -- we are at a new step
-        -- print("row", i, "step", idx)
         local step = r.steps[idx] -- which step within row
         local note = self._notes[i] -- note which matches row based on order held
         if note ~= nil then
-          --if math.random() < step.chance then
-          if step.chance > 0 then
-            local velocity = math.floor(note.vel * step.velocity)
-            --local duration = 1/16 -- FIXME: this is based on row res, step count and step duration scaler
-            --local duration = 1 / (step.duration * 32 / r.res) --- ??? waaaat
-            local duration = step.duration * (1 / (32 / r.res)) --- ??? waaaat
-            local generated = sky.mk_note_on(note.note, velocity, note.ch)
-            generated.duration = duration
-            output(generated) -- requires a make_note device to produce note off
-          else
-            --print("skip:", i, idx)
+          if chance_off or (math.random() < step.chance) then
+            -- determine velocity
+            local velocity = 127
+            if velocity_on then
+              velocity = math.floor(note.vel * step.velocity)
+            end
+            -- determine length
+            local duration = self.default_duration
+            if length_on then
+              duration = clock.get_beat_sec(step.duration * (1 / (32 / r.res)))
+            end
+            -- requires a make_note device to produce note off
+            output(sky.mk_note_on(note.note, velocity, note.ch, duration))
           end
         end
       end
