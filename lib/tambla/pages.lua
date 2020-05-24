@@ -740,7 +740,7 @@ function Controller:new(model)
   self.slot_acc = 1
   self.model:select_slot(1)
 
-  self.chance_mod = true
+  self.chance_mod = false
   self.velocity_mod = true
   self.length_mod = true
 
