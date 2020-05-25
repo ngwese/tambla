@@ -861,6 +861,12 @@ function Controller:add_params()
     end,
   }
 
+  params:add{type = 'option', id = 'output', name = 'output',
+    options = {'midi', 'polysub'},
+    default = 1,
+    action = function(v) self.output_switcher.which = v end,
+  }
+
   params:add{type = 'control', id = 'active_pattern', name = 'active pattern',
     controlspec = cs.new(1, 4, 'lin', 1, 1, ''),
     formatter = fmt.round(1),
