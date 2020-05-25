@@ -811,6 +811,10 @@ function Controller:set_output_switcher(device)
   self.output_switcher = device
 end
 
+function Controller:set_transposer(device)
+  self.transposer = device
+end
+
 -- parameters
 
 function Controller:add_row_params(i)
@@ -849,7 +853,6 @@ function Controller:add_params()
       end
     end,
   }
-
   params:add{type = "number", id = "midi_out_device", name = "midi output",
     min = 1, max = 4, default = 2,
     action = function(v)
@@ -860,13 +863,19 @@ function Controller:add_params()
       end
     end,
   }
-
   params:add{type = 'option', id = 'output', name = 'output',
     options = {'midi', 'polysub'},
     default = 1,
     action = function(v) self.output_switcher.which = v end,
   }
-
+  params:add{type = "number", id = "transpose", name = "transpose",
+    min = -24, max = 24, default = 0,
+    action = function(v)
+      if self.transposer then
+        self.transposer.semitones = v
+      end
+    end,
+  }
   params:add{type = 'control', id = 'active_pattern', name = 'active pattern',
     controlspec = cs.new(1, 4, 'lin', 1, 1, ''),
     formatter = fmt.round(1),

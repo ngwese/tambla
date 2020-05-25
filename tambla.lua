@@ -16,6 +16,7 @@ include('sky/lib/prelude')
 sky.use('sky/lib/device/make_note')
 sky.use('sky/lib/device/arp')
 sky.use('sky/lib/device/switcher')
+sky.use('sky/lib/device/transpose')
 sky.use('sky/lib/io/norns')
 sky.use('sky/lib/engine/polysub')
 
@@ -60,9 +61,12 @@ outputs = sky.Switcher{
   sky.PolySub{},
 }
 
+transpose = sky.Transpose{}
+
 main = sky.Chain{
   sky.Held{ debug = false },
   devices.TamblaNoteGen(tambla, controller),
+  transpose,
   sky.MakeNote{},
   outputs,
   sky.Logger{
@@ -102,6 +106,7 @@ function init()
   -- tambla
   controller:set_input_device(input1)
   controller:set_output_switcher(outputs)
+  controller:set_transposer(transpose)
   controller:add_params()
 end
 
