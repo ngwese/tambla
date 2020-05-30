@@ -211,7 +211,7 @@ function PlayPage:process(event, output, state, props)
       else
         self.slot_acc = util.clamp(self.slot_acc + (event.delta / 10), 1, self.model:slot_count())
         self.model:select_slot(self.slot_acc)
-        params:set('slot', self.model:selected_slot_idx(), true)
+        params:set('active_pattern', self.model:selected_slot_idx(), true)
       end
     elseif event.num == 2 then
       controller.prop_acc = util.clamp(controller.prop_acc + (event.delta / 10), 1, controller.prop_count)
