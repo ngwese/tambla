@@ -519,9 +519,11 @@ function MacroPage:new(model, controller)
   self:select_slot(1)
   self.slot_acc = 1
 
+  self._clipboard = nil
+
   self.actions = {
-    -- {'copy', nil},
-    -- {'paste', nil},
+    {'copy', nil, self.do_copy_pat},
+    {'paste', nil, self.do_paste_pat},
     {'pattern load:', PatternSelector, self.do_load_pat},
     {'pattern save:', PatternSelector, self.do_save_pat},
     -- {'set load:', SetSelector, self.do_load_set},
@@ -638,6 +640,16 @@ function MacroPage:process(event, output, state, props)
   end
 end
 
+function MacroPage:do_copy_pat()
+  self._clipboard = self.model:slot():store()
+end
+
+function MacroPage:do_paste_pat()
+  if self._clipboard then
+    self.model:slot(self._slot):load(self._clipboard)
+  end
+end
+
 local function expand_path(p, prefix, extension)
   if p[1] ~= '/' then
     p = prefix .. p
@@ -685,7 +697,7 @@ function MacroPage:do_save_pat(what)
     if path and path ~= 'cancel' then
       local dest = expand_path(path, paths.this.data, PAT_EXTN)
       print('saving:', dest)
-      local data = json.encode(self.model:slot():store()) -- FIXME: this should be a pattern
+      local data = json.encode(self.model:slot():store())
       local f = io.open(dest, 'w+')
       f:write(data)
       f:close()
