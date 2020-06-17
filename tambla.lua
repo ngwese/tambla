@@ -12,19 +12,19 @@
 -- ALT-K3 = page right
 --
 
-include('sky/lib/prelude')
-sky.use('sky/lib/device/make_note')
-sky.use('sky/lib/device/arp')
-sky.use('sky/lib/device/switcher')
-sky.use('sky/lib/device/transpose')
-sky.use('sky/lib/io/norns')
-sky.use('sky/lib/engine/polysub')
+include('sky/unstable')
+sky.use('device/make_note')
+sky.use('device/arp')
+sky.use('device/switcher')
+sky.use('device/transpose')
+sky.use('io/norns')
+sky.use('engine/polysub')
 
 local halfsecond = include('awake/lib/halfsecond')
 
-local model = include('sky/lib/tambla/model')
-local pages = include('sky/lib/tambla/pages')
-local devices = include('sky/lib/tambla/devices')
+local model = include('lib/model')
+local pages = include('lib/pages')
+local devices = include('lib/devices')
 
 tambla = model.Tambla{
   tick_period = 1/64,
