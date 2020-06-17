@@ -1,7 +1,7 @@
-sky.use('sky/lib/io/norns')
-sky.use('sky/lib/core/page')
+sky.use('core/page')
+sky.use('io/norns')
 
-local json = include('sky/lib/dep/rxi-json/json')
+local json = include('lib/dep/rxi-json/json')
 
 local fmt = require('formatters')
 local cs = require('controlspec')
