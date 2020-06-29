@@ -909,7 +909,7 @@ function Controller:add_params()
   params:add{type = 'option', id = 'output', name = 'output',
     options = {'midi', 'polysub'},
     default = 1,
-    action = function(v) self.output_switcher.which = v end,
+    action = function(v) self.output_switcher:set_which(which) end,
   }
   params:add{type = "number", id = "transpose", name = "transpose",
     min = -24, max = 24, default = 0,
