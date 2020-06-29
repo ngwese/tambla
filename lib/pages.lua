@@ -823,6 +823,10 @@ function Controller:set_output_switcher(device)
   self.output_switcher = device
 end
 
+function Controller:set_channeler(device)
+  self.channeler = device
+end
+
 function Controller:set_transposer(device)
   self.transposer = device
 end
@@ -831,7 +835,7 @@ end
 
 function Controller:add_row_params(i)
   local n = tostring(i)
-  params:add_group('row ' .. n, 4)
+  params:add_group('row ' .. n, 7)
   params:add{type = 'control', id = 'bend' .. n, name = 'bend',
     controlspec = cs.new(0.2, 5.0, 'lin', 0.005, 1.0, ''),
     formatter = fmt.round(0.01),
@@ -852,6 +856,25 @@ function Controller:add_row_params(i)
     formatter = fmt.round(1),
     action = function(v) self.model:slot().rows[i]:set_offset(v) end,
   }
+  params:add{type = 'option', id = 'destination' .. n, name = 'destination',
+    options = {'main', 'row out'},
+    default = 1,
+    action = function(v)
+      -- TODO
+    end,
+  }
+  params:add{type = 'number', id = 'row_out_device' .. n, name = 'midi output',
+    min = 1, max = 4, default = 2,
+    action = function(v)
+      -- TODO
+    end,
+  }
+  params:add{type = 'number', id = 'row_out_ch' .. n, name = 'midi output channel',
+    min = 1, max = 16, default = 1,
+    action = function(v)
+      -- TODO
+    end,
+  }
 end
 
 function Controller:add_params()
@@ -865,13 +888,21 @@ function Controller:add_params()
       end
     end,
   }
-  params:add{type = "number", id = "midi_out_device", name = "midi output",
+  params:add{type = "number", id = "midi_out_device", name = "midi output (main)",
     min = 1, max = 4, default = 2,
     action = function(v)
       if self.output_switcher then
         -- MAINT: this code assumes the first device in the switcher is an
         -- Output
         self.output_switcher[1]:set_device(midi.connect(v))
+      end
+    end,
+  }
+  params:add{type = "number", id = "midi_out_ch", name = "midi output channel",
+    min = 1, max = 16, default = 1,
+    action = function(v)
+      if self.channeler then
+        self.channeler:set_channel(v)
       end
     end,
   }
@@ -884,7 +915,7 @@ function Controller:add_params()
     min = -24, max = 24, default = 0,
     action = function(v)
       if self.transposer then
-        self.transposer.semitones = v
+        self.transposer:set_semitones(v)
       end
     end,
   }

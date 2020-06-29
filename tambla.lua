@@ -16,7 +16,7 @@ include('sky/unstable')
 sky.use('device/make_note')
 sky.use('device/arp')
 sky.use('device/switcher')
-sky.use('device/transpose')
+sky.use('device/transform')
 sky.use('io/norns')
 sky.use('engine/polysub')
 
@@ -61,17 +61,23 @@ outputs = sky.Switcher{
   sky.PolySub{},
 }
 
-transpose = sky.Transpose{}
+pitch = sky.Pitch{}
+channel = sky.Channel{
+  channel = 1
+}
 
 main = sky.Chain{
   sky.Held{ debug = false },
   devices.TamblaNoteGen(tambla, controller),
-  transpose,
+  pitch,
   sky.MakeNote{},
+  channel,
   outputs,
   sky.Logger{
     bypass = true,
-    filter = tambla.is_tick,
+    filter = function(e)
+      return tambla.is_tick(e) or sky.is_clock(e)
+    end,
   },
   function(event, output)
     if tambla.is_tick(event) then output(sky.mk_redraw()) end
@@ -106,7 +112,8 @@ function init()
   -- tambla
   controller:set_input_device(input1)
   controller:set_output_switcher(outputs)
-  controller:set_transposer(transpose)
+  controller:set_channeler(channel)
+  controller:set_transposer(pitch)
   controller:add_params()
 end
 
