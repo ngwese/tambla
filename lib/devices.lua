@@ -63,7 +63,9 @@ function TamblaNoteGen:process(event, output, state)
               duration = clock.get_beat_sec(step.duration * (1 / (32 / r.res)))
             end
             -- requires a make_note device to produce note off
-            output(sky.mk_note_on(note.note, velocity, note.ch, duration))
+            local ev = sky.mk_note_on(note.note, velocity, note.ch, duration)
+            ev.voice = i
+            output(ev)
           end
         end
       end
@@ -77,9 +79,36 @@ function TamblaNoteGen:process(event, output, state)
   end
 end
 
+local Route = sky.Device:extend()
+
+function Route:new(props)
+  Route.super.new(self, props)
+  self.property = props.key or 'route'
+  self._count = 0
+  for i, child in ipairs(props) do
+    self[i] = child
+    self._count = i
+  end
+end
+
+function Route:process(event, output, state)
+  local where = event[self.property]
+  if where == nil then
+    print("ROUTE default")
+    output(event)
+  else
+    local chain = self[where]
+    print("ROUTE", where, chain)
+    if chain ~= nil then
+      chain:process(event)
+    end
+  end
+end
+
 --
 -- module
 --
 return {
   TamblaNoteGen = TamblaNoteGen,
+  Route = Route,
 }

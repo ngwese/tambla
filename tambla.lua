@@ -66,15 +66,30 @@ channel = sky.Channel{
   channel = 1
 }
 
+-- local function build_row_out(n)
+--   return sky.Chain{
+--     sky.Channel{ channel = n },
+--     outputs,
+--   }
+-- end
+
+  -- devices.Route{
+  --   key = 'voice',
+  --   build_row_out(1),
+  --   build_row_out(2),
+  --   build_row_out(3),
+  --   build_row_out(4),
+  -- },
+
 main = sky.Chain{
-  sky.Held{ debug = false },
+  sky.Held{ debug = true },
   devices.TamblaNoteGen(tambla, controller),
   pitch,
   sky.MakeNote{},
   channel,
   outputs,
   sky.Logger{
-    bypass = true,
+    bypass = false,
     filter = function(e)
       return tambla.is_tick(e) or sky.is_clock(e)
     end,
