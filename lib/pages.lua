@@ -184,7 +184,7 @@ function PlayPage:process(event, output, state, props)
   local controller = self.controller
 
   if sky.is_key(event) then
-    if event.num == 2 and event.z == 1 then
+    if event.n == 2 and event.z == 1 then
       if key_z[1] == 1 then
         props.select_page('macro')
       elseif key_z[3] == 1 then
@@ -195,7 +195,7 @@ function PlayPage:process(event, output, state, props)
         -- play, key 2 action
         print("play key 2 action")
       end
-    elseif event.num == 3 and event.z == 1 then
+    elseif event.n == 3 and event.z == 1 then
       if key_z[1] == 1 then -- mode shift key
         props.select_page('edit')
       else
@@ -204,7 +204,7 @@ function PlayPage:process(event, output, state, props)
       end
     end
   elseif sky.is_enc(event) then
-    if event.num == 1 then
+    if event.n == 1 then
       if key_z[1] == 1 then
         self.controller.row_acc = util.clamp(self.controller.row_acc + (event.delta / 10), 1, self.controller.row_count)
         self.controller:select_row(self.controller.row_acc)
@@ -213,10 +213,10 @@ function PlayPage:process(event, output, state, props)
         self.model:select_slot(self.slot_acc)
         params:set('active_pattern', self.model:selected_slot_idx(), true)
       end
-    elseif event.num == 2 then
+    elseif event.n == 2 then
       controller.prop_acc = util.clamp(controller.prop_acc + (event.delta / 10), 1, controller.prop_count)
       self.controller:select_prop(controller.prop_acc)
-    elseif event.num == 3 then
+    elseif event.n == 3 then
       local idx = self.controller:selected_row_idx()
       local id = self.controller:selected_prop_name() .. tostring(idx) -- FIXME: avoid string construction?
       local delta = event.delta
@@ -267,7 +267,7 @@ function EditPage:process(event, output, state, props)
   -- local controller = self.controller
 
   if sky.is_key(event) then
-    if event.num == 2 and event.z == 1 then
+    if event.n == 2 and event.z == 1 then
       if key_z[1] == 1 then
         -- key 2 w/ key 1 held
         props.select_page('play')
@@ -280,7 +280,7 @@ function EditPage:process(event, output, state, props)
         -- key 2 action
         print('k2 action')
       end
-    elseif event.num == 3 and event.z == 1 then
+    elseif event.n == 3 and event.z == 1 then
       if key_z[1] == 1 then
         -- key 3 w/ key 1 held
       elseif key_z[2] == 1 then
@@ -294,7 +294,7 @@ function EditPage:process(event, output, state, props)
       end
     end
   elseif sky.is_enc(event) then
-    if event.num == 1 then
+    if event.n == 1 then
       if key_z[1] == 0 then
         -- select step
         self.controller.step_acc = util.clamp(self.controller.step_acc + (event.delta / 5), 1, self.controller:selected_row_n())
@@ -304,7 +304,7 @@ function EditPage:process(event, output, state, props)
         self.controller.row_acc = util.clamp(self.controller.row_acc + (event.delta / 10), 1, self.controller.row_count)
         self.controller:select_row(self.controller.row_acc)
       end
-    elseif event.num == 2 then
+    elseif event.n == 2 then
       local step = self.controller:selected_step()
       if key_z[2] == 1 then
         -- tweak chance
@@ -322,7 +322,7 @@ function EditPage:process(event, output, state, props)
           end
         end
       end
-    elseif event.num == 3 then
+    elseif event.n == 3 then
       -- tweak duration
       local step = self.controller:selected_step()
       if step ~= nil then
@@ -611,7 +611,7 @@ function MacroPage:process(event, output, state, props)
   local controller = self.controller
 
   if sky.is_key(event) then
-    if event.num == 3 and event.z == 1 then
+    if event.n == 3 and event.z == 1 then
       if key_z[1] == 1 then
         props.select_page('play')
       else
@@ -622,15 +622,15 @@ function MacroPage:process(event, output, state, props)
       end
     end
   elseif sky.is_enc(event) then
-    if event.num == 1 then
+    if event.n == 1 then
       if key_z[1] == 0 then
         self.slot_acc = util.clamp(self.slot_acc + (event.delta / 10), 1, self.model:slot_count())
         self:select_slot(self.slot_acc)
       end
-    elseif event.num == 2 then
+    elseif event.n == 2 then
       self.action_acc = util.clamp(self.action_acc + (event.delta / 10), 1, #self.actions)
       self:select_action(self.action_acc)
-    elseif event.num == 3 then
+    elseif event.n == 3 then
       local selector = self:selected_action()[2]
       if selector then
         selector.acc = util.clamp(selector.acc + (event.delta / 10), 1, selector.len)
@@ -948,7 +948,7 @@ end
 function Controller:process(event, output, state)
   if sky.is_key(event) then
     -- record key state for use in key chording ui
-    self.key_z[event.num] = event.z
+    self.key_z[event.n] = event.z
   end
 end
 
