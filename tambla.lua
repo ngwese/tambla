@@ -18,6 +18,7 @@ sky.use('device/arp')
 sky.use('device/switcher')
 sky.use('device/transform')
 sky.use('io/norns')
+sky.use('io/arc')
 sky.use('engine/polysub')
 
 local halfsecond = include('awake/lib/halfsecond')
@@ -30,7 +31,7 @@ tambla = model.Tambla{
   tick_period = 1/64,
   slots = {
     model.Pattern():randomize(),
-    model.Pattern(),
+    model.Pattern():randomize(),
     model.Pattern(),
     model.Pattern()
   }
@@ -47,7 +48,7 @@ ui = sky.PageRouter{
   }
 }
 
-display = sky.Chain{
+norns_display = sky.Chain{
   sky.NornsDisplay{
     screen.clear,
     ui:draw_router(),
@@ -55,24 +56,33 @@ display = sky.Chain{
   }
 }
 
-outputs = sky.Switcher{
+main_outputs = sky.Switcher{
   which = 1,
   sky.Output{},
   sky.PolySub{},
 }
 
-pitch = sky.Pitch{}
-channel = sky.Channel{
+main_pitch = sky.Pitch{}
+
+main_channel = sky.Channel{
   channel = 1
 }
 
 -- local function build_row_out(n)
 --   return sky.Chain{
 --     sky.Channel{ channel = n },
---     outputs,
+--     sky.Output{
+--       device = midi.connect(2)
+--     },
 --   }
 -- end
 
+
+main = sky.Chain{
+  sky.Held{},
+  devices.TamblaNoteGen(tambla, controller),
+  main_pitch,
+  sky.MakeNote{},
   -- devices.Route{
   --   key = 'voice',
   --   build_row_out(1),
@@ -80,16 +90,10 @@ channel = sky.Channel{
   --   build_row_out(3),
   --   build_row_out(4),
   -- },
-
-main = sky.Chain{
-  sky.Held{ debug = true },
-  devices.TamblaNoteGen(tambla, controller),
-  pitch,
-  sky.MakeNote{},
-  channel,
-  outputs,
+  main_channel,
+  main_outputs,
   sky.Logger{
-    bypass = false,
+    bypass = true,
     filter = function(e)
       return tambla.is_tick(e) or sky.is_clock(e)
     end,
@@ -97,16 +101,37 @@ main = sky.Chain{
   function(event, output)
     if tambla.is_tick(event) then output(sky.mk_redraw()) end
   end,
-  sky.Forward(display),
+  sky.Forward(norns_display),
 }
 
-input1 = sky.Input{ chain = main }
+midi_input = sky.Input{ chain = main }
 
-input2 = sky.NornsInput{
+norns_input = sky.NornsInput{
   chain = sky.Chain{
     ui:event_router(),
-    sky.Forward(display)
+    sky.Forward(norns_display)
   },
+}
+
+arc_input = sky.ArcInput{
+  chain = sky.Chain{
+    sky.ArcDialGesture{ which = 4 },
+    function(event, output)
+      if sky.ArcDialGesture.is_dial(event) and event.n == 4 then
+        tambla:set_chance_boost(event.normalized)
+      end
+      output(event)
+    end,
+    ui:event_router(),
+    -- sky.ArcDialGesture{ which = 1 },
+    -- sky.Logger{},
+    sky.ArcDisplay{
+      sky.ArcDialRender{ width = 1, mode = 'range' },
+      sky.ArcDisplay.null_render(),
+      sky.ArcDisplay.null_render(),
+      sky.ArcDialRender{ which = 4, mode = 'segment' },
+    }
+  }
 }
 
 --
@@ -125,10 +150,10 @@ function init()
   params:set('amprel', 0.1)
 
   -- tambla
-  controller:set_input_device(input1)
-  controller:set_output_switcher(outputs)
-  controller:set_channeler(channel)
-  controller:set_transposer(pitch)
+  controller:set_input_device(midi_input)
+  controller:set_output_switcher(main_outputs)
+  controller:set_channeler(main_channel)
+  controller:set_transposer(main_pitch)
   controller:add_params()
 end
 

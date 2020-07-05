@@ -175,6 +175,7 @@ function Tambla:new(props)
   end
   self._slot_count = #self.slots
   self:select_slot(1)
+  self:set_chance_boost(0)
 end
 
 function Tambla:slot(num)
@@ -194,6 +195,14 @@ end
 
 function Tambla:selected_slot_idx()
   return self._selected_slot
+end
+
+function Tambla:set_chance_boost(boost)
+  self._chance_boost = boost
+end
+
+function Tambla:chance_boost()
+  return self._chance_boost
 end
 
 function Tambla.mk_tick()

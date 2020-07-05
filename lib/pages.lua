@@ -152,6 +152,8 @@ function PageBase:draw_slot_num()
 end
 
 function PageBase:process(event, output, state, props)
+  -- MAINT: this is goofy, currently state of key 1 is held in the controller so that it is
+  -- accessible to all pages... so we have to process that here.
   self.controller:process(event, output, state, props)
   output(event)
 end
@@ -225,6 +227,13 @@ function PlayPage:process(event, output, state, props)
         delta = delta / 10.0
       end
       params:delta(id, event.delta)
+    end
+  elseif sky.ArcInput.is_enc(event) then
+    if event.n == 1 then
+      self.controller.row_acc = util.clamp(self.controller.row_acc + (event.delta / 50), 1, self.controller.row_count)
+      self.controller:select_row(self.controller.row_acc)
+
+      output(sky.ArcDialGesture.mk_dial(1, self.controller.row_acc, math.floor(self.controller.row_acc) / self.controller.row_count))
     end
   end
 end

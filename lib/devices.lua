@@ -41,6 +41,7 @@ function TamblaNoteGen:process(event, output, state)
 
     local beat = event.beat
     local chance_off = not self.controller.chance_mod
+    local chance_boost = self.model:chance_boost()
     local velocity_on = self.controller.velocity_mod
     local length_on = self.controller.length_mod
 
@@ -51,7 +52,7 @@ function TamblaNoteGen:process(event, output, state)
         local step = r.steps[idx] -- which step within row
         local note = self._notes[i] -- note which matches row based on order held
         if note ~= nil then
-          if chance_off or (math.random() < step.chance) then
+          if chance_off or (math.random() < (step.chance + chance_boost)) then
             -- determine velocity
             local velocity = 127
             if velocity_on then
@@ -94,11 +95,11 @@ end
 function Route:process(event, output, state)
   local where = event[self.property]
   if where == nil then
-    print("ROUTE default")
+    -- print("ROUTE default")
     output(event)
   else
     local chain = self[where]
-    print("ROUTE", where, chain)
+    -- print("ROUTE", where, chain)
     if chain ~= nil then
       chain:process(event)
     end
