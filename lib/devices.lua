@@ -68,6 +68,11 @@ function TamblaNoteGen:process(event, output, state)
             ev.voice = i
             output(ev)
           end
+          -- always output aux?
+          local cc = util.linlin(0, 1, 0, 127, step.aux)
+          local cc_ev = sky.mk_control_change(1, cc, note.ch)
+          cc_ev.voice = i
+          output(cc_ev)
         end
       end
       -- note that we've looked at this step

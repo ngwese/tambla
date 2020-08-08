@@ -4,15 +4,17 @@
 
 local Step = sky.Object:extend()
 
-function Step:new(chance, velocity, duration)
+function Step:new(chance, velocity, duration, aux)
   self:set_chance(chance or 0)      -- [0, 1] for probability
   self:set_velocity(velocity or 0)  -- [0, 1]
   self:set_duration(duration or 1)  -- [0.1, 1] where duration is a multiplier on 1/row.res
+  self:set_aux(aux or 0)
 end
 
 function Step:set_chance(c) self.chance = util.clamp(c, 0, 1) end
 function Step:set_velocity(v) self.velocity = util.clamp(v, 0, 1) end
 function Step:set_duration(d) self.duration = util.clamp(d, 0.1, 1) end
+function Step:set_aux(v) self.aux = util.clamp(v, 0, 1) end
 
 function Step:is_active()
   return self.chance > 0 and self.velocity > 0
@@ -22,14 +24,15 @@ function Step:clear()
   self.chance = 0
   self.velocity = 0
   self.duration = 0.5
+  self.aux = 0
 end
 
 function Step:load(props)
-  self:new(props.chance, props.velocity, props.duration)
+  self:new(props.chance, props.velocity, props.duration, props.aux)
 end
 
 function Step:store()
-  return { __type = 'Step', chance = self.chance, velocity = self.velocity, duration = self.duration }
+  return { __type = 'Step', chance = self.chance, velocity = self.velocity, duration = self.duration, aux = self.aux }
 end
 
 --
@@ -65,9 +68,10 @@ function Row:randomize()
     local chance = math.random()
     if chance > 0.5 then chance = math.random() else chance = 0 end -- random chance for ~20% of steps (but not really)
     if chance > 0 then
-      s.chance = chance
-      s.velocity = util.linlin(0, 1, 0.2, 1, math.random())
-      s.duration = util.linlin(0, 1, 0.25, 1, math.random())
+      s:set_chance(chance)
+      s:set_velocity(util.linlin(0, 1, 0.2, 1, math.random()))
+      s:set_duration(util.linlin(0, 1, 0.25, 1, math.random()))
+      s:set_aux(math.random())
     else
       s:clear()
     end
