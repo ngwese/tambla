@@ -37,6 +37,39 @@ tambla = model.Tambla{
   }
 }
 
+main_logger = sky.Logger{
+  bypass = false,
+  filter = function(e)
+    return tambla.is_tick(e) or sky.is_clock(e)
+  end,
+}
+
+local function build_row_out(n)
+  local out = sky.Chain{
+    sky.Channel{ channel = n },
+    main_logger,
+    sky.Output{
+      device = midi.connect(2)
+    },
+  }
+  out.bypass = true
+  return out
+end
+
+row_out1 = build_row_out(1)
+row_out2 = build_row_out(2)
+row_out3 = build_row_out(3)
+row_out4 = build_row_out(4)
+
+route_row = devices.Route{
+  key = 'voice',
+  row_out1,
+  row_out2,
+  row_out3,
+  row_out4,
+}
+
+
 controller = pages.Controller(tambla)
 
 ui = sky.PageRouter{
@@ -68,36 +101,15 @@ main_channel = sky.Channel{
   channel = 1
 }
 
--- local function build_row_out(n)
---   return sky.Chain{
---     sky.Channel{ channel = n },
---     sky.Output{
---       device = midi.connect(2)
---     },
---   }
--- end
-
-
 main = sky.Chain{
   sky.Held{},
   devices.TamblaNoteGen(tambla, controller),
   main_pitch,
   sky.MakeNote{},
-  -- devices.Route{
-  --   key = 'voice',
-  --   build_row_out(1),
-  --   build_row_out(2),
-  --   build_row_out(3),
-  --   build_row_out(4),
-  -- },
+  route_row,
   main_channel,
   main_outputs,
-  sky.Logger{
-    bypass = true,
-    filter = function(e)
-      return tambla.is_tick(e) or sky.is_clock(e)
-    end,
-  },
+  main_logger,
   function(event, output)
     if tambla.is_tick(event) then output(sky.mk_redraw()) end
   end,
@@ -115,18 +127,19 @@ norns_input = sky.NornsInput{
 
 arc_input = sky.ArcInput{
   chain = sky.Chain{
+    ui:event_router(),
     sky.ArcDialGesture{ which = 4 },
+    sky.ArcDialSmoother{ which = 4, sr = 24, time = 0.5 },
     function(event, output)
       if sky.ArcDialGesture.is_dial(event) and event.n == 4 then
         tambla:set_chance_boost(event.normalized)
       end
       output(event)
     end,
-    ui:event_router(),
     -- sky.ArcDialGesture{ which = 1 },
     -- sky.Logger{},
     sky.ArcDisplay{
-      sky.ArcDialRender{ width = 1, mode = 'range' },
+      sky.ArcDialRender{ width = 1.2, mode = 'range' },
       sky.ArcDisplay.null_render(),
       sky.ArcDisplay.null_render(),
       sky.ArcDialRender{ which = 4, mode = 'segment' },
@@ -154,6 +167,9 @@ function init()
   controller:set_output_switcher(main_outputs)
   controller:set_channeler(main_channel)
   controller:set_transposer(main_pitch)
+  controller:set_row_outputs({row_out1, row_out2, row_out3, row_out4})
   controller:add_params()
+
+  arc_input.chain:init()
 end
 

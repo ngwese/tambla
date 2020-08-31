@@ -11,6 +11,7 @@ function TamblaNoteGen:new(model, controller)
   self.default_duration = 1/16
   self._scheduler = nil
   self._notes = {}
+  self._next_notes = nil
   self._last_index = {}
   for i = 1, self.model.NUM_ROWS do
     self._last_index[i] = 0
@@ -31,10 +32,6 @@ function TamblaNoteGen:device_removed(chain)
   self._scheduler = nil
 end
 
---
--- TODO: enable/disable chance evaluation
---
-
 function TamblaNoteGen:process(event, output, state)
   if self.model.is_tick(event) then
     output(event) -- pass the tick along
@@ -44,6 +41,12 @@ function TamblaNoteGen:process(event, output, state)
     local chance_boost = self.model:chance_boost()
     local velocity_on = self.controller.velocity_mod
     local length_on = self.controller.length_mod
+
+    -- check if input hold changed
+    if self._next_notes and not self.controller.hold_input then
+      self._notes = self._next_notes
+      self._next_notes = nil
+    end
 
     for i, r in ipairs(self.model:slot().rows) do
       local idx = r:step_index(beat)
@@ -79,7 +82,11 @@ function TamblaNoteGen:process(event, output, state)
       self._last_index[i] = idx
     end
   elseif sky.is_type(event, sky.HELD_EVENT) then
-    self._notes = event.notes
+    if self.controller.hold_input then
+      self._next_notes = event.notes
+    else
+      self._notes = event.notes
+    end
   else
     output(event)
   end
@@ -100,16 +107,25 @@ end
 function Route:process(event, output, state)
   local where = event[self.property]
   if where == nil then
-    -- print("ROUTE default")
     output(event)
+    return
+  end
+
+  local chain = self[where]
+  if chain ~= nil and not chain.bypass then
+    chain:process(event)
   else
-    local chain = self[where]
-    -- print("ROUTE", where, chain)
-    if chain ~= nil then
-      chain:process(event)
-    end
+    output(event)
   end
 end
+
+-- local Select = sky.Device:extend()
+
+-- function Select:new(props)
+--   Select.super.new(self, props)
+--   self.key = props.key or 'voice'
+--   self.value = props.value or 0
+--   self.
 
 --
 -- module

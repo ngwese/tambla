@@ -744,6 +744,7 @@ local Controller = sky.Object:extend()
 
 function Controller:new(model)
   self.model = model
+  self.row_outs = nil
 
   self.row_count = model.NUM_ROWS
   self.row_acc = 1
@@ -764,6 +765,7 @@ function Controller:new(model)
   self.chance_mod = false
   self.velocity_mod = true
   self.length_mod = true
+  self.hold_input = false
 
   self.key_z = {0, 0, 0}
 end
@@ -840,6 +842,10 @@ function Controller:set_transposer(device)
   self.transposer = device
 end
 
+function Controller:set_row_outputs(outputs)
+  self.row_outs = outputs
+end
+
 -- parameters
 
 function Controller:add_row_params(i)
@@ -869,19 +875,23 @@ function Controller:add_row_params(i)
     options = {'main', 'row out'},
     default = 1,
     action = function(v)
-      -- TODO
+      -- Route device sends to output if chain it bypassed
+      self.row_outs[i].bypass = v == 1
     end,
   }
   params:add{type = 'number', id = 'row_out_device' .. n, name = 'midi output',
     min = 1, max = 4, default = 2,
     action = function(v)
-      -- TODO
+      local num_devices = #self.row_outs[i].devices
+      local out_device = self.row_outs[i].devices[num_devices]
+      out_device:set_device(midi.connect(v))
     end,
   }
   params:add{type = 'number', id = 'row_out_ch' .. n, name = 'midi output channel',
     min = 1, max = 16, default = 1,
     action = function(v)
-      -- TODO
+      -- assumes Channel device is first in the chain
+      self.row_outs[i].devices[1]:set_channel(v)
     end,
   }
 end
@@ -933,6 +943,11 @@ function Controller:add_params()
     formatter = fmt.round(1),
     action = function(v) self.model:select_slot(v) end,
   }
+  params:add{type = 'option', id = 'hold', name = 'hold',
+    options = {'on', 'off'},
+    default = 2,
+    action = function(v) self.hold_input = v == 1 end,
+  }
   params:add{type = 'option', id = 'chance', name = 'chance',
     options = {'on', 'off'},
     default = 2,
@@ -947,6 +962,11 @@ function Controller:add_params()
     options = {'on', 'off'},
     default = 1,
     action = function(v) self.length_mod = v == 1 end,
+  }
+  params:add{type = 'option', id = 'input_hold', name = 'input hold',
+    options = {'on', 'off'},
+    default = 2,
+    action = function(v) self.hold_input = v == 1 end,
   }
 
   for i = 1, self.model.NUM_ROWS do
