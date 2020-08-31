@@ -745,6 +745,7 @@ local Controller = sky.Object:extend()
 function Controller:new(model)
   self.model = model
   self.row_outs = nil
+  self.logger = nil
 
   self.row_count = model.NUM_ROWS
   self.row_acc = 1
@@ -846,6 +847,10 @@ function Controller:set_row_outputs(outputs)
   self.row_outs = outputs
 end
 
+function Controller:set_logger(logger)
+  self.logger = logger
+end
+
 -- parameters
 
 function Controller:add_row_params(i)
@@ -943,35 +948,37 @@ function Controller:add_params()
     formatter = fmt.round(1),
     action = function(v) self.model:select_slot(v) end,
   }
-  params:add{type = 'option', id = 'hold', name = 'hold',
-    options = {'on', 'off'},
-    default = 2,
-    action = function(v) self.hold_input = v == 1 end,
-  }
   params:add{type = 'option', id = 'chance', name = 'chance',
-    options = {'on', 'off'},
-    default = 2,
-    action = function(v) self.chance_mod = v == 1 end,
+    options = {'off', 'on'},
+    default = 1,
+    action = function(v) self.chance_mod = v == 2 end,
   }
   params:add{type = 'option', id = 'velocity_mod', name = 'velocity mod',
-    options = {'on', 'off'},
-    default = 1,
-    action = function(v) self.velocity_mod = v == 1 end,
+    options = {'off', 'on'},
+    default = 2,
+    action = function(v) self.velocity_mod = v == 2 end,
   }
   params:add{type = 'option', id = 'length_mod', name = 'length mod',
-    options = {'on', 'off'},
-    default = 1,
-    action = function(v) self.length_mod = v == 1 end,
+    options = {'off', 'on'},
+    default = 2,
+    action = function(v) self.length_mod = v == 2 end,
   }
   params:add{type = 'option', id = 'input_hold', name = 'input hold',
-    options = {'on', 'off'},
-    default = 2,
-    action = function(v) self.hold_input = v == 1 end,
+    options = {'off', 'on'},
+    default = 1,
+    action = function(v) self.hold_input = v == 2 end,
   }
 
   for i = 1, self.model.NUM_ROWS do
     self:add_row_params(i)
   end
+
+  params:add{type = 'option', id = 'output_logging', name = 'output logging',
+    options = {'off', 'on'},
+    default = 1,
+    action = function(v) self.logger.bypass = v == 1 end,
+  }
+
 end
 
 function Controller:process(event, output, state)

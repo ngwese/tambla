@@ -38,7 +38,7 @@ tambla = model.Tambla{
 }
 
 main_logger = sky.Logger{
-  bypass = false,
+  bypass = true,
   filter = function(e)
     return tambla.is_tick(e) or sky.is_clock(e)
   end,
@@ -168,6 +168,7 @@ function init()
   controller:set_channeler(main_channel)
   controller:set_transposer(main_pitch)
   controller:set_row_outputs({row_out1, row_out2, row_out3, row_out4})
+  controller:set_logger(main_logger)
   controller:add_params()
 
   arc_input.chain:init()
