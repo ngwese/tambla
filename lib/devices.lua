@@ -42,12 +42,6 @@ function TamblaNoteGen:process(event, output, state)
     local velocity_on = self.controller.velocity_mod
     local length_on = self.controller.length_mod
 
-    -- check if input hold changed
-    if self._next_notes and not self.controller.hold_input then
-      self._notes = self._next_notes
-      self._next_notes = nil
-    end
-
     for i, r in ipairs(self.model:slot().rows) do
       local idx = r:step_index(beat)
       if idx ~= self._last_index[i] then
@@ -82,11 +76,7 @@ function TamblaNoteGen:process(event, output, state)
       self._last_index[i] = idx
     end
   elseif sky.is_type(event, sky.HELD_EVENT) then
-    if self.controller.hold_input then
-      self._next_notes = event.notes
-    else
-      self._notes = event.notes
-    end
+    self._notes = event.notes
   else
     output(event)
   end
@@ -118,14 +108,6 @@ function Route:process(event, output, state)
     output(event)
   end
 end
-
--- local Select = sky.Device:extend()
-
--- function Select:new(props)
---   Select.super.new(self, props)
---   self.key = props.key or 'voice'
---   self.value = props.value or 0
---   self.
 
 --
 -- module

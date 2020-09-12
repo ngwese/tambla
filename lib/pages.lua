@@ -851,6 +851,10 @@ function Controller:set_logger(logger)
   self.logger = logger
 end
 
+function Controller:set_hold_state_setter(func)
+  self.hold_setter = func
+end
+
 -- parameters
 
 function Controller:add_row_params(i)
@@ -966,7 +970,7 @@ function Controller:add_params()
   params:add{type = 'option', id = 'input_hold', name = 'input hold',
     options = {'off', 'on'},
     default = 1,
-    action = function(v) self.hold_input = v == 2 end,
+    action = function(v) self.hold_setter(v == 2) end,
   }
 
   for i = 1, self.model.NUM_ROWS do

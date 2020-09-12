@@ -69,7 +69,6 @@ route_row = devices.Route{
   row_out4,
 }
 
-
 controller = pages.Controller(tambla)
 
 ui = sky.PageRouter{
@@ -101,8 +100,10 @@ main_channel = sky.Channel{
   channel = 1
 }
 
+held = sky.Held{}
+
 main = sky.Chain{
-  sky.Held{},
+  held,
   devices.TamblaNoteGen(tambla, controller),
   main_pitch,
   sky.MakeNote{},
@@ -115,6 +116,10 @@ main = sky.Chain{
   end,
   sky.Forward(norns_display),
 }
+
+function hold_state_setter(state)
+  main:process(held.mk_hold_state(state))
+end
 
 midi_input = sky.Input{ chain = main }
 
@@ -169,6 +174,7 @@ function init()
   controller:set_transposer(main_pitch)
   controller:set_row_outputs({row_out1, row_out2, row_out3, row_out4})
   controller:set_logger(main_logger)
+  controller:set_hold_state_setter(hold_state_setter)
   controller:add_params()
 
   arc_input.chain:init()
