@@ -766,7 +766,6 @@ function Controller:new(model)
   self.chance_mod = false
   self.velocity_mod = true
   self.length_mod = true
-  self.hold_input = false
 
   self.key_z = {0, 0, 0}
 end
@@ -937,7 +936,7 @@ function Controller:add_params()
   params:add{type = 'option', id = 'output', name = 'output',
     options = {'midi', 'polysub'},
     default = 1,
-    action = function(v) self.output_switcher:set_which(which) end,
+    action = function(v) self.output_switcher:set_which(v) end,
   }
   params:add{type = "number", id = "transpose", name = "transpose",
     min = -24, max = 24, default = 0,
