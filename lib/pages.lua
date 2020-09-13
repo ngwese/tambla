@@ -7,6 +7,7 @@ local fmt = require('formatters')
 local cs = require('controlspec')
 local fs = require('fileselect')
 local te = require('textentry')
+local mu = require('musicutil')
 
 local PAT_EXTN = '.pat.json'
 local SET_EXTN = '.set.json'
@@ -854,11 +855,20 @@ function Controller:set_hold_state_setter(func)
   self.hold_setter = func
 end
 
+function Controller:set_random_device(device)
+  self.random_device = device
+end
+
+function Controller:set_scale_device(device)
+  self.scale_device = device
+end
+
+
 -- parameters
 
 function Controller:add_row_params(i)
   local n = tostring(i)
-  params:add_group('row ' .. n, 7)
+  params:add_group(n, 7)
   params:add{type = 'control', id = 'bend' .. n, name = 'bend',
     controlspec = cs.new(0.2, 5.0, 'lin', 0.005, 1.0, ''),
     formatter = fmt.round(0.01),
@@ -904,54 +914,74 @@ function Controller:add_row_params(i)
   }
 end
 
+function Controller:add_random_params()
+  params:add_group('random', 5)
+  params:add{type = 'option', id = 'random_enable', name = 'randomize pitch',
+    options = {'off', 'on'},
+    default = 1,
+    action = function(v) self.random_device.bypass = v == 1 end,
+  }
+  params:add{type = 'number', id = 'random_choices', name = 'choice',
+    min = 1, max = 24, default = 1,
+    action = function(v) self.random_device:set_choices(v) end,
+  }
+  params:add{type = 'number', id = 'random_scale', name = 'scale',
+    min = 1, max = 24, default = 1,
+    action = function(v) self.random_device:set_scale(v) end,
+  }
+  local sign_options = {'add', 'sub', 'bi'}
+  params:add{type = 'option', id = 'random_sign', name = 'sign',
+    options = {'add', 'subtract', 'bidirectional'},
+    default = 1,
+    action = function(v) self.random_device:set_sign(sign_options[v]) end,
+  }
+  params:add{type = 'control', id = 'random_chance', name = 'chance',
+    controlspec = cs.new(0, 1, 'lin', 0.01, 0.1, ''),
+    formatter = fmt.round(0.01),
+    action = function(v) self.random_device:set_chance(v) end,
+  }
+end
+
+function Controller:get_scale_names()
+  local names = {}
+  for _, scale in ipairs(mu.SCALES) do
+    table.insert(names, string.lower(scale.name))
+  end
+  return names
+end
+
+function Controller:add_scale_params()
+  params:add_group('scale', 4)
+  params:add{type = 'option', id = 'scale_enable', name = 'constrain to scale',
+    options = {'off', 'on'},
+    default = 1,
+    action = function(v) self.scale_device.bypass = v == 1 end,
+  }
+  local scale_options = self:get_scale_names()
+  params:add{type = 'option', id = 'scale_which', name = 'scale',
+    options = scale_options,
+    default = 1,
+    action = function(v) self.scale_device:set_scale(scale_options[v]) end,
+  }
+  params:add{type = 'number', id = 'scale_root', name = 'root',
+    min = 0, max = 127, default = 0,
+    action = function(v) self.scale_device:set_root(v) end,
+  }
+  params:add{type = 'number', id = 'scale_octaves', name = 'octaves',
+    min = 1, max = 10, default = 10,
+    action = function(v) self.scale_device:set_octaves(v) end,
+  }
+end
+
 function Controller:add_params()
   params:add_separator('tambla')
 
-  params:add{type = "number", id = "midi_in_device", name = "midi input",
-    min = 1, max = 4, default = 1,
-    action = function(v)
-      if self.input_device then
-        self.input_device:set_device(midi.connect(v))
-      end
-    end,
-  }
-  params:add{type = "number", id = "midi_out_device", name = "midi output (main)",
-    min = 1, max = 4, default = 2,
-    action = function(v)
-      if self.output_switcher then
-        -- MAINT: this code assumes the first device in the switcher is an
-        -- Output
-        self.output_switcher[1]:set_device(midi.connect(v))
-      end
-    end,
-  }
-  params:add{type = "number", id = "midi_out_ch", name = "midi output channel",
-    min = 1, max = 16, default = 1,
-    action = function(v)
-      if self.channeler then
-        self.channeler:set_channel(v)
-      end
-    end,
-  }
-  params:add{type = 'option', id = 'output', name = 'output',
-    options = {'midi', 'polysub'},
-    default = 1,
-    action = function(v) self.output_switcher:set_which(v) end,
-  }
-  params:add{type = "number", id = "transpose", name = "transpose",
-    min = -24, max = 24, default = 0,
-    action = function(v)
-      if self.transposer then
-        self.transposer:set_semitones(v)
-      end
-    end,
-  }
   params:add{type = 'control', id = 'active_pattern', name = 'active pattern',
     controlspec = cs.new(1, 4, 'lin', 1, 1, ''),
     formatter = fmt.round(1),
     action = function(v) self.model:select_slot(v) end,
   }
-  params:add{type = 'option', id = 'chance', name = 'chance',
+  params:add{type = 'option', id = 'chance_mod', name = 'chance',
     options = {'off', 'on'},
     default = 1,
     action = function(v) self.chance_mod = v == 2 end,
@@ -971,16 +1001,63 @@ function Controller:add_params()
     default = 1,
     action = function(v) self.hold_setter(v == 2) end,
   }
+  params:add{type = 'number', id = 'transpose', name = 'transpose',
+    min = -24, max = 24, default = 0,
+    action = function(v)
+      if self.transposer then
+        self.transposer:set_semitones(v)
+      end
+    end,
+  }
+
+  self:add_random_params()
+  self:add_scale_params()
+
+  params:add_separator('tambla: rows')
 
   for i = 1, self.model.NUM_ROWS do
     self:add_row_params(i)
   end
 
-  params:add{type = 'option', id = 'output_logging', name = 'output logging',
-    options = {'off', 'on'},
-    default = 1,
-    action = function(v) self.logger.bypass = v == 1 end,
-  }
+  params:add_separator('tambla: i/o')
+
+  params:add{type = "number", id = "midi_in_device", name = "midi input",
+  min = 1, max = 4, default = 1,
+  action = function(v)
+    if self.input_device then
+      self.input_device:set_device(midi.connect(v))
+    end
+  end,
+}
+params:add{type = "number", id = "midi_out_device", name = "midi output (main)",
+  min = 1, max = 4, default = 2,
+  action = function(v)
+    if self.output_switcher then
+      -- MAINT: this code assumes the first device in the switcher is an
+      -- Output
+      self.output_switcher[1]:set_device(midi.connect(v))
+    end
+  end,
+}
+params:add{type = "number", id = "midi_out_ch", name = "midi output channel",
+  min = 1, max = 16, default = 1,
+  action = function(v)
+    if self.channeler then
+      self.channeler:set_channel(v)
+    end
+  end,
+}
+params:add{type = 'option', id = 'output', name = 'output',
+  options = {'midi', 'polysub'},
+  default = 1,
+  action = function(v) self.output_switcher:set_which(v) end,
+}
+
+params:add{type = 'option', id = 'output_logging', name = 'output logging',
+  options = {'off', 'on'},
+  default = 1,
+  action = function(v) self.logger.bypass = v == 1 end,
+}
 
 end
 

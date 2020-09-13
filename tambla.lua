@@ -102,18 +102,8 @@ main_channel = sky.Channel{
 
 held = sky.Held{}
 
-random = devices.Random{
-  bypass = true,
-  choices = 1,
-  scale = 4,
-  sign = 'add',
-  chance = 0.3,
-}
-
-scale = devices.Scale{
-  bypass = true,
-  scale = 'minor pentatonic',
-}
+random = devices.Random{ bypass = true }
+scale = devices.Scale{ bypass = true }
 
 main = sky.Chain{
   held,
@@ -190,6 +180,8 @@ function init()
   controller:set_row_outputs({row_out1, row_out2, row_out3, row_out4})
   controller:set_logger(main_logger)
   controller:set_hold_state_setter(hold_state_setter)
+  controller:set_random_device(random)
+  controller:set_scale_device(scale)
   controller:add_params()
 
   arc_input.chain:init()
