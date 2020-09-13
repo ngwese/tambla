@@ -110,11 +110,17 @@ random = devices.Random{
   chance = 0.3,
 }
 
+scale = devices.Scale{
+  bypass = true,
+  scale = 'minor pentatonic',
+}
+
 main = sky.Chain{
   held,
   devices.TamblaNoteGen(tambla, controller),
-  random,
   main_pitch,
+  random,
+  scale,
   sky.MakeNote{},
   route_row,
   main_channel,

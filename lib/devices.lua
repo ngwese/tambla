@@ -1,3 +1,4 @@
+local mu = require('musicutil')
 --
 -- TamblaNoteGen
 --
@@ -129,7 +130,7 @@ function Random:new(props)
 end
 
 function Random:set_scale(scale)
-  self._scale = util.clamp(scale, 1, 24)
+  self._array = util.clamp(scale, 1, 24)
 end
 
 function Random:set_choices(choice)
@@ -148,25 +149,78 @@ function Random:set_sign(sign)
 end
 
 function Random:process(event, output, state)
-  if not self.bypass then
-    if sky.is_type(event, sky.types.NOTE_ON) then
-      if math.random() < self._chance then
-        local id = event.correlation
-        local delta = math.floor(math.random() * self._choices * self._scale)
-        if self._sign == 'sub' or (self._sign == 'bi' and math.random() < 0.5) then
-          delta = -delta
-        end
-        local shifted = util.clamp(event.note + delta, 0, 127)
-        self._active[id] = shifted
-        event.note = shifted
-      end
-    elseif sky.is_type(event, sky.types.NOTE_OFF) then
+  if not self.bypass and sky.is_type(event, sky.types.NOTE_ON) then
+    if math.random() < self._chance then
       local id = event.correlation
-      local shifted = self._active[id]
-      if shifted then
-        self._active[id] = nil
-        event.note = shifted
+      local delta = math.floor(math.random() * self._choices * self._array)
+      if self._sign == 'sub' or (self._sign == 'bi' and math.random() < 0.5) then
+        delta = -delta
       end
+      local shifted = util.clamp(event.note + delta, 0, 127)
+      self._active[id] = shifted
+      event.note = shifted
+    end
+  elseif sky.is_type(event, sky.types.NOTE_OFF) then
+    local id = event.correlation
+    local shifted = self._active[id]
+    if shifted then
+      self._active[id] = nil
+      event.note = shifted
+    end
+  end
+  output(event)
+end
+
+--
+-- Scale
+--
+
+local Scale = sky.Device:extend()
+
+function Scale:new(props)
+  Scale.super.new(self, props)
+  self:set_root(props.root or 0, true)
+  self:set_scale(props.scale or 'major', true)
+  self:set_octaves(props.octaves or 10, true)
+  self:build()
+  self._active = {}
+end
+
+function Scale:set_root(note, quiet)
+  self._root = note
+  if not quiet then self:build() end
+end
+
+function Scale:set_scale(name, quiet)
+  self._name = name
+  if not quiet then self:build() end
+end
+
+function Scale:set_octaves(octaves, quiet)
+  self._octaves = octaves
+  if not quiet then self:build() end
+end
+
+function Scale:build()
+  self._array = mu.generate_scale(self._root, self._name, self._octaves)
+end
+
+-- FIXME: it might be worth exploring using a dense scale array to avoid the
+-- need to do the type of searching which `snap_note_to_array` does thus
+-- lowering the code of process
+
+function Scale:process(event, output, state)
+  if not self.bypass and sky.is_type(event, sky.types.NOTE_ON) then
+    local id = event.correlation
+    local corrected = mu.snap_note_to_array(event.note, self._array)
+    self._active[id] = corrected
+    event.note = corrected
+  elseif sky.is_type(event, sky.types.NOTE_OFF) then
+    local id = event.correlation
+    local corrected = self._active[id]
+    if corrected then
+      self._active[id] = nil
+      event.note = corrected
     end
   end
   output(event)
@@ -175,8 +229,10 @@ end
 --
 -- module
 --
+
 return {
   TamblaNoteGen = TamblaNoteGen,
   Route = Route,
   Random = Random,
+  Scale = Scale,
 }
