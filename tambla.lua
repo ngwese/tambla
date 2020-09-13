@@ -102,9 +102,18 @@ main_channel = sky.Channel{
 
 held = sky.Held{}
 
+random = devices.Random{
+  bypass = true,
+  choices = 1,
+  scale = 4,
+  sign = 'add',
+  chance = 0.3,
+}
+
 main = sky.Chain{
   held,
   devices.TamblaNoteGen(tambla, controller),
+  random,
   main_pitch,
   sky.MakeNote{},
   route_row,
