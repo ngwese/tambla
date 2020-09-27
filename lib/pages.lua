@@ -879,14 +879,12 @@ function Controller:add_row_params(i)
     formatter = fmt.round(1),
     action = function(v) self.model:slot().rows[i]:set_n(v) end,
   }
-  params:add{type = 'control', id = 'res' .. n, name = 'res',
-    controlspec = cs.new(4, 32, 'lin', 1, 4, ''),
-    formatter = fmt.round(1),
+  params:add{type = 'number', id = 'res' .. n, name = 'res',
+    min = 4, max = 32, default = 4,
     action = function(v) self.model:slot().rows[i]:set_res(v) end,
   }
-  params:add{type = 'control', id = 'offset' .. n, name = 'offset',
-    controlspec = cs.new(-16, 16, 'lin', 1, 0, ''),
-    formatter = fmt.round(1),
+  params:add{type = 'number', id = 'offset' .. n, name = 'offset',
+    min = -16, max = 16, default = 0,
     action = function(v) self.model:slot().rows[i]:set_offset(v) end,
   }
   params:add{type = 'option', id = 'destination' .. n, name = 'destination',
@@ -976,9 +974,8 @@ end
 function Controller:add_params()
   params:add_separator('tambla')
 
-  params:add{type = 'control', id = 'active_pattern', name = 'active pattern',
-    controlspec = cs.new(1, 4, 'lin', 1, 1, ''),
-    formatter = fmt.round(1),
+  params:add{type = 'number', id = 'active_pattern', name = 'active pattern',
+    min = 1, max = 4, default = 1,
     action = function(v) self.model:select_slot(v) end,
   }
   params:add{type = 'option', id = 'chance_mod', name = 'chance',
