@@ -19,9 +19,9 @@ sky.use('device/switcher')
 sky.use('device/transform')
 sky.use('io/norns')
 sky.use('io/arc')
-sky.use('engine/polysub')
+sky.use('engine/polyperc')
 
-local halfsecond = include('awake/lib/halfsecond')
+local halfsecond = include('lib/halfsecond')
 
 local model = include('lib/model')
 local pages = include('lib/pages')
@@ -90,8 +90,8 @@ norns_display = sky.Chain{
 
 main_outputs = sky.Switcher{
   which = 1,
+  sky.PolyPerc{},
   sky.Output{},
-  sky.PolySub{},
 }
 
 main_pitch = sky.Pitch{}
@@ -168,9 +168,6 @@ function init()
   params:set('delay', 0.13)
   params:set('delay_rate', 0.95)
   params:set('delay_feedback', 0.27)
-
-  -- polysub
-  params:set('amprel', 0.1)
 
   -- tambla
   controller:set_input_device(midi_input)

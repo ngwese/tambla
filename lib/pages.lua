@@ -1050,7 +1050,7 @@ params:add{type = "number", id = "midi_out_ch", name = "midi output channel",
   end,
 }
 params:add{type = 'option', id = 'output', name = 'output',
-  options = {'midi', 'polysub'},
+  options = {'polyperc', 'midi'},
   default = 1,
   action = function(v) self.output_switcher:set_which(v) end,
 }
