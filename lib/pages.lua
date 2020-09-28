@@ -963,6 +963,7 @@ function Controller:add_scale_params()
   }
   params:add{type = 'number', id = 'scale_root', name = 'root',
     min = 0, max = 127, default = 0,
+    formatter = function(param) return mu.note_num_to_name(param:get(), true) end,
     action = function(v) self.scale_device:set_root(v) end,
   }
   params:add{type = 'number', id = 'scale_octaves', name = 'octaves',
