@@ -237,6 +237,12 @@ function Tambla:load(props)
     p:load(s)
     table.insert(self.slots, p)
   end
+
+  -- NB: alters global clock tempo, this might need to behavior which can be
+  -- toggled off
+  if props.tempo then
+    params:set('clock_tempo', props.tempo)
+  end
 end
 
 

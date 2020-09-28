@@ -536,8 +536,8 @@ function MacroPage:new(model, controller)
     {'paste', nil, self.do_paste_pat},
     {'pattern load:', PatternSelector, self.do_load_pat},
     {'pattern save:', PatternSelector, self.do_save_pat},
-    -- {'set load:', SetSelector, self.do_load_set},
-    -- {'set save:', SetSelector, self.do_save_set}
+    {'set load:', SetSelector, self.do_load_set},
+    {'set save:', SetSelector, self.do_save_set}
     -- {'algo:' nil},
   }
   self:select_action(1)
@@ -727,12 +727,55 @@ function MacroPage:do_save_pat(what)
 end
 
 function MacroPage:do_load_set(what)
-  print('load set', what)
+  print('do_load_set(' .. what .. ')')
+
+  local _load = function(path)
+    if path and path ~= 'cancel' then
+      local src = expand_path(path, paths.this.data, SET_EXTN)
+      print('loading:', src)
+      local f = io.open(src, 'r')
+      local data = f:read()
+      f:close()
+      local props = json.decode(data)
+      self.model:load(props)
+    end
+  end
+
+  if what == '...' then
+    sky.set_focus(false)
+    fs.enter(paths.this.data, function(path)
+      print('selected:', path)
+      _load(path)
+      sky.set_focus(true)
+    end)
+  else
+    _load(what)
+  end
 end
 
 function MacroPage:do_save_set(what)
-  print('save set', what)
+  print('do_save_set(' .. what .. ')')
+
+  local _save = function(path)
+    if path and path ~= 'cancel' then
+      local dest = expand_path(path, paths.this.data, SET_EXTN)
+      print('saving:', dest)
+      local data = json.encode(self.model:store())
+      local f = io.open(dest, 'w+')
+      f:write(data)
+      f:close()
+    end
+  end
+
   if what == '...' then
+    sky.set_focus(false)
+    te.enter(function(path)
+      if path then _save(path) end
+      SetSelector:refresh()
+      sky.set_focus(true)
+    end, 'set')
+  else
+    _save(what)
   end
 end
 
