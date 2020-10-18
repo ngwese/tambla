@@ -56,15 +56,17 @@ function TamblaNoteGen:process(event, output, state)
             if velocity_on then
               velocity = math.floor(note.vel * step.velocity)
             end
-            -- determine length
-            local duration = self.default_duration
-            if length_on then
-              duration = clock.get_beat_sec(step.duration * (1 / (32 / r.res)))
+            if velocity > 0 then
+              -- determine length
+              local duration = self.default_duration
+              if length_on then
+                duration = clock.get_beat_sec(step.duration * (1 / (32 / r.res)))
+              end
+              -- requires a make_note device to produce note off
+              local ev = sky.mk_note_on(note.note, velocity, note.ch, duration)
+              ev.voice = i
+              output(ev)
             end
-            -- requires a make_note device to produce note off
-            local ev = sky.mk_note_on(note.note, velocity, note.ch, duration)
-            ev.voice = i
-            output(ev)
           end
           -- always output aux?
           local cc = util.linlin(0, 1, 0, 127, step.aux)
