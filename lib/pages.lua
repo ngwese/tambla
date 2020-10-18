@@ -119,7 +119,7 @@ end
 function PageBase:draw_rows(beat)
   local rows = self.model:slot().rows
   for i, w in ipairs(self.widgets) do
-    w:draw(rows[i], beat)
+    w:draw(rows[i], self.model:sync(i, beat))
   end
 end
 

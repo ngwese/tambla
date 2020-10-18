@@ -47,7 +47,6 @@ function Row:new(props)
   self:set_res(props.res or 4)
   self:set_bend(props.bend or 1.0)
   self:set_offset(props.offset or 0)
-  self:set_sync(props.sync or 0)
   self.steps = {}
   self:clear()
   self._scaler = sky.build_scalex(0, 1, 0, 1)
@@ -57,7 +56,6 @@ function Row:set_res(r) self.res = util.clamp(math.floor(r), 4, 32) end
 function Row:set_n(n) self.n = util.clamp(math.floor(n), 2, 32) end
 function Row:set_bend(b) self.bend = util.clamp(b, 0.2, 5) end
 function Row:set_offset(o) self.offset = math.floor(o) end
-function Row:set_sync(s) self.sync = math.floor(s) end
 
 function Row:clear()
   for i = 1, self.MAX_STEPS do
@@ -82,11 +80,7 @@ function Row:randomize()
 end
 
 function Row:head_position(beats)
-  local beat = beats - self.sync
-  if beat < 0 then
-    print("negative beat", beat)
-  end
-  local _, f = math.modf(beat / self.res)
+  local _, f = math.modf(beats / self.res)
   return self._scaler(f, self.bend)
 end
 
@@ -174,14 +168,17 @@ Tambla.MODEL_VERSION = 1
 function Tambla:new(props)
   self.tick_period = props.tick_period or 1/32
   self.slots = {}
+  self.row_sync = {}
   if props.slots then
     for _, p in ipairs(props.slots) do
       table.insert(self.slots, p)
+      table.insert(self.row_sync, 0)
     end
   else
     local p = Pattern()
     p:randomize()
     table.insert(self.slots, p)
+    table.insert(self.row_sync, 0)
   end
   self._slot_count = #self.slots
   self:select_slot(1)
@@ -205,6 +202,14 @@ end
 
 function Tambla:selected_slot_idx()
   return self._selected_slot
+end
+
+function Tambla:set_sync(i, beat)
+  self.row_sync[i] = math.floor(beat)
+end
+
+function Tambla:sync(i, beat)
+  return beat - (self.row_sync[i] or 0)
 end
 
 function Tambla:set_chance_boost(boost)

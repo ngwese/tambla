@@ -15,7 +15,7 @@ function TamblaNoteGen:new(model, controller)
   self._next_notes = nil
   self._last_index = {}
   for i = 1, self.model.NUM_ROWS do
-    self._last_index[i] = nil
+    self._last_index[i] = 0
   end
 end
 
@@ -44,7 +44,7 @@ function TamblaNoteGen:process(event, output, state)
     local length_on = self.controller.length_mod
 
     for i, r in ipairs(self.model:slot().rows) do
-      local idx = r:step_index(beat)
+      local idx = r:step_index(self.model:sync(i, beat))
       if idx ~= self._last_index[i] then
         -- we are at a new step
         local step = r.steps[idx] -- which step within row
@@ -85,9 +85,9 @@ function TamblaNoteGen:process(event, output, state)
     for i, r in ipairs(self.model:slot().rows) do
       local note = self._notes[i]
       if note and note_sync then
-        r:set_sync(note.beat)
+        self.model:set_sync(i, note.beat)
       else
-        r:set_sync(0)
+        self.model:set_sync(i, 0)
       end
     end
   else
