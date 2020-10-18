@@ -47,6 +47,7 @@ function Row:new(props)
   self:set_res(props.res or 4)
   self:set_bend(props.bend or 1.0)
   self:set_offset(props.offset or 0)
+  self:set_sync(props.sync or 0)
   self.steps = {}
   self:clear()
   self._scaler = sky.build_scalex(0, 1, 0, 1)
@@ -56,6 +57,7 @@ function Row:set_res(r) self.res = util.clamp(math.floor(r), 4, 32) end
 function Row:set_n(n) self.n = util.clamp(math.floor(n), 2, 32) end
 function Row:set_bend(b) self.bend = util.clamp(b, 0.2, 5) end
 function Row:set_offset(o) self.offset = math.floor(o) end
+function Row:set_sync(s) self.sync = math.floor(s) end
 
 function Row:clear()
   for i = 1, self.MAX_STEPS do
@@ -80,7 +82,11 @@ function Row:randomize()
 end
 
 function Row:head_position(beats)
-  local _, f = math.modf(beats / self.res)
+  local beat = beats - self.sync
+  if beat < 0 then
+    print("negative beat", beat)
+  end
+  local _, f = math.modf(beat / self.res)
   return self._scaler(f, self.bend)
 end
 

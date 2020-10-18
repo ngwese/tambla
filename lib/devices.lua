@@ -15,7 +15,7 @@ function TamblaNoteGen:new(model, controller)
   self._next_notes = nil
   self._last_index = {}
   for i = 1, self.model.NUM_ROWS do
-    self._last_index[i] = 0
+    self._last_index[i] = nil
   end
 end
 
@@ -78,6 +78,16 @@ function TamblaNoteGen:process(event, output, state)
     end
   elseif sky.is_type(event, sky.HELD_EVENT) then
     self._notes = event.notes
+    -- update note row sync offsets
+    local note_sync = self.controller.note_sync
+    for i, r in ipairs(self.model:slot().rows) do
+      local note = self._notes[i]
+      if note and note_sync then
+        r:set_sync(note.beat)
+      else
+        r:set_sync(0)
+      end
+    end
   else
     output(event)
   end

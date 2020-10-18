@@ -810,6 +810,7 @@ function Controller:new(model)
   self.chance_mod = false
   self.velocity_mod = true
   self.length_mod = true
+  self.note_sync = false
 
   self.key_z = {0, 0, 0}
 end
@@ -1054,6 +1055,11 @@ function Controller:add_params()
         self.transposer:set_semitones(v)
       end
     end,
+  }
+  params:add{type = 'option', id = 'playhead_sync', name = 'sync',
+    options = {'all', 'note'},
+    default = 1,
+    action = function(v) self.note_sync = v == 2 end,
   }
 
   self:add_random_params()
