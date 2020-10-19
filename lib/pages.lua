@@ -938,6 +938,7 @@ function Controller:add_row_params(i)
       -- Route device sends to output if chain it bypassed
       self.row_outs[i].bypass = v == 1
     end,
+    allow_pmap = false,
   }
   params:add{type = 'number', id = 'row_out_device' .. n, name = 'midi output',
     min = 1, max = 4, default = 2,
@@ -946,6 +947,7 @@ function Controller:add_row_params(i)
       local out_device = self.row_outs[i].devices[num_devices]
       out_device:set_device(midi.connect(v))
     end,
+    allow_pmap = false,
   }
   params:add{type = 'number', id = 'row_out_ch' .. n, name = 'midi output channel',
     min = 1, max = 16, default = 1,
@@ -1103,6 +1105,7 @@ params:add{type = 'option', id = 'output', name = 'output',
   options = {'polyperc', 'midi'},
   default = 1,
   action = function(v) self.output_switcher:set_which(v) end,
+  allow_pmap = false,
 }
 
 params:add{type = 'option', id = 'output_logging', name = 'output logging',
