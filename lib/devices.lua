@@ -86,8 +86,6 @@ function TamblaNoteGen:process(event, output, state)
       local note = self._notes[i]
       if note and note_sync then
         self.model:set_sync(i, note.beat)
-      else
-        self.model:set_sync(i, 0)
       end
     end
   else
