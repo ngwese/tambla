@@ -17,7 +17,9 @@ sky.use('device/make_note')
 sky.use('device/arp')
 sky.use('device/switcher')
 sky.use('device/transform')
+sky.use('lib/device/linn') -- TODO: publish local fixes
 sky.use('io/norns')
+sky.use('lib/io/grid')     -- TODO: publish local fixes
 sky.use('io/arc')
 sky.use('engine/polyperc')
 
@@ -146,8 +148,6 @@ arc_input = sky.ArcInput{
       end
       output(event)
     end,
-    -- sky.ArcDialGesture{ which = 1 },
-    -- sky.Logger{},
     sky.ArcDisplay{
       sky.ArcDialRender{ width = 1.2, mode = 'range' },
       sky.ArcDisplay.null_render(),
@@ -156,6 +156,23 @@ arc_input = sky.ArcInput{
     }
   }
 }
+
+grid_input = sky.GridInput{
+  chain = sky.Chain{
+    function(event, output)
+      if sky.is_init(event) then output(grid_input:mk_redraw())
+      else output(event) end
+    end,
+    sky.GridGestureRegion{
+      sky.linnGesture{},
+    },
+    sky.Forward(main),
+    sky.GridDisplay{
+      sky.linnRender{},
+    },
+  }
+}
+
 
 --
 -- script logic
@@ -182,5 +199,6 @@ function init()
   controller:add_params()
 
   arc_input.chain:init()
+  grid_input.chain:init()
 end
 
