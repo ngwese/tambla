@@ -1,5 +1,5 @@
 -- bending rhythmic arpeggio
--- 1.0.0 @ngwese
+-- 1.1.0 @ngwese
 -- <url>
 --
 -- E1 select slot
