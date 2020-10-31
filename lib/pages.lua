@@ -225,9 +225,9 @@ function PlayPage:process(event, output, state, props)
       local delta = event.delta
       if key_z[3] == 1 then
         -- fine tuning
-        delta = delta / 10.0
+        delta = delta * 0.01
       end
-      params:delta(id, event.delta)
+      params:delta(id, delta)
     end
   elseif sky.ArcInput.is_enc(event) then
     if event.n == 1 then
@@ -914,7 +914,7 @@ function Controller:add_row_params(i)
   local n = tostring(i)
   params:add_group(n, 7)
   params:add{type = 'control', id = 'bend' .. n, name = 'bend',
-    controlspec = cs.new(0.2, 5.0, 'lin', 0.005, 1.0, ''),
+    controlspec = cs.new(0.2, 5.0, 'lin', 0.001, 1.0, ''),
     formatter = fmt.round(0.01),
     action = function(v) self.model:slot().rows[i]:set_bend(v) end,
   }
