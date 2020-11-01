@@ -57,7 +57,7 @@ function TamblaNoteGen:process(event, output, state)
             if velocity_on then
               velocity = math.floor(note.vel * step.velocity)
             end
-            velocity = velocity * velocity_scale
+            velocity = math.floor(velocity * velocity_scale)
             if velocity > 0 then
               -- determine length
               local duration = self.default_duration
