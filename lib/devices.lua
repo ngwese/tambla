@@ -40,6 +40,7 @@ function TamblaNoteGen:process(event, output, state)
     local beat = event.beat
     local chance_off = not self.controller.chance_mod
     local chance_boost = self.model:chance_boost()
+    local velocity_scale = self.model:velocity_scale()
     local velocity_on = self.controller.velocity_mod
     local length_on = self.controller.length_mod
 
@@ -56,6 +57,7 @@ function TamblaNoteGen:process(event, output, state)
             if velocity_on then
               velocity = math.floor(note.vel * step.velocity)
             end
+            velocity = velocity * velocity_scale
             if velocity > 0 then
               -- determine length
               local duration = self.default_duration

@@ -183,6 +183,7 @@ function Tambla:new(props)
   self._slot_count = #self.slots
   self:select_slot(1)
   self:set_chance_boost(0)
+  self:set_velocity_scale(1)
 end
 
 function Tambla:slot(num)
@@ -218,6 +219,14 @@ end
 
 function Tambla:chance_boost()
   return self._chance_boost
+end
+
+function Tambla:set_velocity_scale(scale)
+  self._velocity_scale = scale
+end
+
+function Tambla:velocity_scale()
+  return self._velocity_scale
 end
 
 function Tambla.mk_tick()

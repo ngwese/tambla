@@ -140,18 +140,28 @@ norns_input = sky.NornsInput{
 arc_input = sky.ArcInput{
   chain = sky.Chain{
     ui:event_router(),
+    sky.ArcDialGesture{ which = 2, initial = 0.42 },
+    sky.ArcDialSmoother{ which = 2, sr = 24, time = 20 },
+    sky.ArcDialGesture{ which = 3, initial = 0.9 },
+    sky.ArcDialSmoother{ which = 3, sr = 24, time = 8 },
     sky.ArcDialGesture{ which = 4 },
     sky.ArcDialSmoother{ which = 4, sr = 24, time = 0.5 },
     function(event, output)
-      if sky.ArcDialGesture.is_dial(event) and event.n == 4 then
-        tambla:set_chance_boost(event.normalized)
+      if sky.ArcDialGesture.is_dial(event) then
+        if event.n == 4 then
+          params:set('chance_boost', event.normalized)
+        elseif event.n == 3 then
+          params:set('velocity_scale', event.normalized)
+        elseif event.n == 2 then
+          params:set('pw', event.normalized * 100)
+        end
       end
       output(event)
     end,
     sky.ArcDisplay{
       sky.ArcDialRender{ width = 1.2, mode = 'range' },
-      sky.ArcDisplay.null_render(),
-      sky.ArcDisplay.null_render(),
+      sky.ArcDialRender{ which = 2, mode = 'segment' },
+      sky.ArcDialRender{ which = 3, mode = 'segment' },
       sky.ArcDialRender{ which = 4, mode = 'segment' },
     }
   }
@@ -178,6 +188,12 @@ grid_input = sky.GridInput{
 -- script logic
 --
 
+local function arc_init() arc_input.chain:init() end
+arc.add = function(dev) arc_init() end
+
+local function grid_init() grid_input.chain:init() end
+grid.add = function(dev) grid_init() end
+
 function init()
   halfsecond.init()
 
@@ -198,7 +214,7 @@ function init()
   controller:set_scale_device(scale)
   controller:add_params()
 
-  arc_input.chain:init()
-  grid_input.chain:init()
+  arc_init()
+  grid_init()
 end
 

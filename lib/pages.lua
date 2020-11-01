@@ -1035,6 +1035,11 @@ function Controller:add_params()
     formatter = fmt.round(0.01),
     action = function(v) self.model:set_chance_boost(v) end,
   }
+  params:add{type = 'control', id = 'velocity_scale', name = 'velocity scale',
+    controlspec = cs.new(0, 1, 'lin', 0.01, 1, ''),
+    formatter = fmt.round(0.01),
+    action = function(v) self.model:set_velocity_scale(v) end,
+  }
   params:add{type = 'option', id = 'velocity_mod', name = 'velocity mod',
     options = {'off', 'on'},
     default = 2,
