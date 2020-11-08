@@ -107,7 +107,12 @@ held = sky.Held{}
 random = devices.Random{ bypass = true }
 scale = devices.Scale{ bypass = true }
 
+recorder = devices.Recorder{}
+player = devices.Player{}
+
 main = sky.Chain{
+  recorder,
+  player,
   held,
   devices.TamblaNoteGen(tambla, controller),
   main_pitch,

@@ -1,4 +1,6 @@
 local mu = require('musicutil')
+local Deque = require('container/deque')
+
 --
 -- TamblaNoteGen
 --
@@ -239,6 +241,154 @@ function Scale:process(event, output, state)
 end
 
 --
+-- BeatStamp
+--
+
+local BeatStamp = sky.Device:extend()
+
+function BeatStamp:new(props)
+  BeatStamp.super.new(self, props)
+end
+
+function BeatStamp:process(event, output)
+  if not self.bypass then event.beat = clock.get_beats() end
+  output(event)
+end
+
+
+--
+-- Clip
+--
+local Clip = sky.Object:extend()
+
+function Clip:new(events)
+  Clip.super.new(self)
+  self.events = events
+end
+
+-- TODO: quantize
+
+function Clip:dump()
+  if self.events then
+    for i, e in ipairs(self.events) do
+      print(i, sky.to_string(e))
+    end
+  else
+    print('empty')
+  end
+end
+
+--
+-- Player
+--
+
+local Player = sky.Device:extend()
+
+function Player:new(props)
+  Player.super.new(props)
+  self.clip = props.clip
+  self._scheduler = nil
+  self._playing = false
+end
+
+function Player:device_inserted(chain)
+  self._scheduler = chain:scheduler(self)
+end
+
+function Player:device_removed(chain)
+  self._scheduler = nil
+end
+
+function Player:process(event, output)
+  if sky.is_type(event, sky.types.START) then
+    self._playing = true
+    self._index = 1
+    self._length = #self.clip.events
+
+    local first = self.clip.events[self._index]
+    if first.timing == 0 then
+      output(first)
+      self._index = self._index + 1
+    end
+
+    self._scheduler:run(function(output)
+      while self._index <= self._length do
+        local next = self.clip.events[self._index]
+        clock.sleep(next.timing)
+        output(next)
+        self._index = self._index + 1
+      end
+      self._playing = false
+    end)
+  end
+
+  output(event)
+end
+
+
+--
+-- Recorder
+--
+
+local Recorder = sky.Device:extend()
+Recorder.REC_START_EVENT = 'REC_START'
+Recorder.REC_STOP_EVENT = 'REC_STOP'
+Recorder.REC_PAUSE_EVENT = 'REC_PAUSE'
+
+function Recorder:new(props)
+  Recorder.super.new(self, props)
+  self._buffer = Deque.new()
+  self._recording = false
+end
+
+-- TODO: make this map to midi start/stop?
+function Recorder.mk_start()
+  return { type = Recorder.REC_START_EVENT }
+end
+
+function Recorder.mk_stop()
+  return { type = Recorder.REC_STOP_EVENT }
+end
+
+function Recorder:start()
+  if not self._recording then
+    self._buffer = Deque.new()
+    self._recording = true
+    self._last_beat = clock.get_beats()
+  end
+end
+
+function Recorder:stop()
+  self._recording = false
+end
+
+function Recorder:process(event, output)
+  if sky.is_type(event, self.REC_START_EVENT) then
+    self:start()
+  elseif sky.is_type(event, self.REC_STOP_EVENT) then
+    self:stop()
+  end
+
+  if self._recording then
+    local now = clock.get_beats()
+    local e = sky.copy(event)
+    e.timing = now - self._last_beat
+    self._last_beat = now
+    self._buffer:push_back(e)
+  end
+
+  output(event)
+end
+
+function Recorder:build_clip()
+  local clip = nil
+  if self._buffer then
+    clip = Clip(self._buffer:to_array())
+  end
+  return clip
+end
+
+--
 -- module
 --
 
@@ -247,4 +397,7 @@ return {
   Route = Route,
   Random = Random,
   Scale = Scale,
+  BeatStamp = BeatStamp,
+  Recorder = Recorder,
+  Player = Player,
 }
