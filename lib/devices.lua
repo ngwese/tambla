@@ -389,6 +389,83 @@ function Recorder:build_clip()
 end
 
 --
+-- Sustain
+--
+
+local Sustain = sky.Device:extend()
+
+function Sustain:new(props)
+  Sustain.super.new(props)
+  self._scheduler = nil
+  self._notes = {}
+  self:set(false)
+end
+
+function Sustain:set(state)
+  self._sustain = state
+  -- if state == false and there are notes held schedule and immediate sending
+  -- of note offs
+  if self._sustain == false and self._scheduler then
+    for k, v in pairs(self._notes) do
+      if v ~= nil then
+        -- FIXME: change now to taking a function like sleep and sync to
+        -- eliminate confusion
+        self._scheduler:now(self:_build_note_off(v))
+      end
+    end
+    self._notes = {}
+  end
+end
+
+function Sustain:__call()
+  return self._sustain
+end
+
+function Sustain:device_inserted(chain)
+  self._scheduler = chain:scheduler(self)
+end
+
+function Sustain:device_removed(chain)
+  self._scheduler = nil
+end
+
+function Sustain:_build_note_off(event)
+  local off = sky.mk_note_off(
+    event.note,
+    event.release_vel or 0,
+    event.ch,
+    event.correlation
+  )
+  off.voice = event.voice  -- TODO: support voice as first class property in core
+  return off
+end
+
+function Sustain:process(event, output)
+  if self.bypass or not self._sustain then
+    output(event)
+    return
+  end
+
+  if self._sustain then
+    if sky.is_type(event, sky.types.NOTE_ON) then
+      -- TODO: compute correlation if not found
+      self._notes[event.correlation] = sky.copy(event)
+      output(event)
+    elseif sky.is_type(event, sky.types.NOTE_OFF) then
+      local existing = self._notes[event.correlation]
+      if existing then
+        -- MAINT: capture release velocity, should the whole event just be
+        -- attached to note_on?
+        existing.release_vel = event.vel
+      else
+        -- no corresponding sustained note, just pass the note off thru
+        output(event)
+      end
+    end
+  end
+end
+
+--
 -- module
 --
 
@@ -397,6 +474,7 @@ return {
   Route = Route,
   Random = Random,
   Scale = Scale,
+  Sustain = Sustain,
   BeatStamp = BeatStamp,
   Recorder = Recorder,
   Player = Player,
