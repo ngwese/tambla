@@ -119,7 +119,7 @@ main = sky.Chain{
   main_outputs,
   main_logger,
   function(event, output)
-    if tambla.is_tick(event) then output(sky.mk_redraw()) end
+    if tambla.is_tick(event) then output(sky.mk_redraw(event.beat)) end
   end,
   sky.Forward(norns_display),
 }
@@ -193,6 +193,9 @@ arc.add = function(dev) arc_init() end
 
 local function grid_init() grid_input.chain:init() end
 grid.add = function(dev) grid_init() end
+
+clock.transport.start = function() tambla:transport_start() end
+clock.transport.stop = function() tambla:transport_stop() end
 
 function init()
   halfsecond.init()

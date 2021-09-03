@@ -24,7 +24,7 @@ function TamblaNoteGen:device_inserted(chain)
   self._scheduler:run(function(output)
     while true do
       clock.sleep(self.model.tick_period)
-      output(self.model.mk_tick())
+      output(self.model:mk_tick())
     end
   end)
 end

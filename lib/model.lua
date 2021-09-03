@@ -169,6 +169,11 @@ function Tambla:new(props)
   self.tick_period = props.tick_period or 1/32
   self.slots = {}
   self.row_sync = {}
+
+  self.beat_offset = 0
+  self.beat_stopped = 0
+  self.running = true
+
   if props.slots then
     for _, p in ipairs(props.slots) do
       table.insert(self.slots, p)
@@ -213,6 +218,21 @@ function Tambla:sync(i, beat)
   return beat - (self.row_sync[i] or 0)
 end
 
+function Tambla:transport_start()
+  local _, f = math.modf(clock.get_beats())
+  self.beat_offset = f
+  self.running = true
+  print("Tambla:transport_start", self.running, self.beat_offset)
+end
+
+function Tambla:transport_stop()
+  if self.running then
+    self.running = false
+    self.beat_stopped = clock.get_beats() - self.beat_offset
+    print("Tambla:transport_stop", self.running, self.beat_stopped)
+  end
+end
+
 function Tambla:set_chance_boost(boost)
   self._chance_boost = boost
 end
@@ -229,8 +249,14 @@ function Tambla:velocity_scale()
   return self._velocity_scale
 end
 
-function Tambla.mk_tick()
-  return { type = Tambla.TICK_EVENT, beat = clock.get_beats() }
+function Tambla:mk_tick()
+  local tick = nil
+  if self.running then
+    tick = { type = Tambla.TICK_EVENT, beat = clock.get_beats() - self.beat_offset }
+  else
+    tick = { type = Tambla.TICK_EVENT, beat = self.beat_stopped }
+  end
+  return tick
 end
 
 function Tambla.is_tick(event)
