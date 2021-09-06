@@ -81,10 +81,18 @@ function Mono:_do(event, output)
 end
 
 function Mono:set_pitch_output(n)
+  if n < 0 or n > 4 then
+    error("pitch output number must be between 1-4")
+  end
+
   self.pitch_output = n
 end
 
 function Mono:set_shape_output(n)
+  if n < 0 or n > 4 then
+    error("shape output number must be between 1-4")
+  end
+
   if self.shape_output ~= n then
     -- output changed, configure ita
     crow.output[n].action = "{ held{ to(dyn{amp=1}*10, dyn{attack=0}) }, to(0, dyn{release=0}) }"
