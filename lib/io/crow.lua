@@ -1,3 +1,5 @@
+sky.use('device/arp') -- ensure the Held device is loaded
+
 local Singleton = nil
 
 -- sky.Chain{
@@ -21,11 +23,19 @@ function Mono:new(props)
   Mono.super.new(self, props)
   self.velocity = props.velocity or false
 
+  self:set_pitch_output(props.pitch_output or 1)
   -- setup amp shape, must be done before dyn values can be set
-  crow.output[2].action = "{ held{ to(dyn{amp=1}*10, dyn{attack=0}) }, to(0, dyn{release=0}) }"
-
+  self:set_shape_output(props.shape_output or 2)
   self:set_attack(props.attack or 0.0)
   self:set_release(props.release or 0.0)
+
+  -- build an internal chain to re-use Held note tracker
+  self._chain = sky.Chain{
+    sky.Held{},
+    function(event, output)
+      self:_do(event, output)
+    end,
+  }
 end
 
 function to_volts(note)
@@ -36,29 +46,68 @@ function to_volts(note)
 end
 
 function Mono:process(event, output)
-  if sky.is_type(event, sky.types.NOTE_ON) then
-    crow.output[1].volts = to_volts(event.note)
-    -- TODO: pitch slew
-    if self.velocity then
-      local amp = util.linlin(0, 127, 0, 1, event.vel)
-      crow.output[2].dyn.amp = amp
-    end
-    crow.output[2](true)
-  elseif sky.is_type(event, sky.types.NOTE_OFF) then
-    -- TODO: note tracking
-    crow.output[2](false)
-  end
+  local processed = self._chain:process(event)
   output(event)
+
+  -- FIXME: if the sub-chain generated any event, pass them through. a convience
+  -- function seems appropriate here
+  local c = processed:count()
+  if c > 0 then
+    print("mono: ", processed:count())
+    for i, e in processed:ipairs() do
+      print(i, sky.to_string(e))
+    end
+  end
+end
+
+function Mono:_do(event, output)
+  if sky.is_type(event, sky.HELD_EVENT) then
+    local last = event.notes[#event.notes]
+    if last ~= nil then
+      -- have a note, set pitch and trigger
+      self:_pitch().volts = to_volts(last.note)
+      if self.velocity then
+        local amp = util.linlin(0, 127, 0, 1, last.vel)
+        self:_shape().dyn.amp = amp
+      end
+      self:_shape()(true)
+    else
+      -- no note, key was lifed
+      self:_shape()(false)
+    end
+  else
+    output(event)
+  end
+end
+
+function Mono:set_pitch_output(n)
+  self.pitch_output = n
+end
+
+function Mono:set_shape_output(n)
+  if self.shape_output ~= n then
+    -- output changed, configure ita
+    crow.output[n].action = "{ held{ to(dyn{amp=1}*10, dyn{attack=0}) }, to(0, dyn{release=0}) }"
+    self.shape_output = n
+  end
+end
+
+function Mono:_shape()
+  return crow.output[self.shape_output]
+end
+
+function Mono:_pitch()
+  return crow.output[self.pitch_output]
 end
 
 function Mono:set_attack(attack)
   self.attack = attack
-  crow.output[2].dyn.attack = attack
+  self:_shape().dyn.attack = attack
 end
 
 function Mono:set_release(release)
   self.release = release
-  crow.output[2].dyn.release = release
+  self:_shape().dyn.release = release
 end
 
 --
