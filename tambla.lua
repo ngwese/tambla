@@ -20,6 +20,7 @@ sky.use('device/transform')
 sky.use('lib/device/linn') -- TODO: publish local fixes
 sky.use('io/norns')
 sky.use('lib/io/grid')     -- TODO: publish local fixes
+sky.use('lib/io/crow')
 sky.use('io/arc')
 sky.use('engine/polyperc')
 
@@ -46,30 +47,67 @@ main_logger = sky.Logger{
   end,
 }
 
-local function build_row_out(n)
+--
+-- midi outputs
+--
+
+local function build_midi_out(n)
   local out = sky.Chain{
     sky.Channel{ channel = n },
-    main_logger,
     sky.Output{
       device = midi.connect(2)
     },
   }
-  out.bypass = true
   return out
 end
 
-row_out1 = build_row_out(1)
-row_out2 = build_row_out(2)
-row_out3 = build_row_out(3)
-row_out4 = build_row_out(4)
+midi_a = build_midi_out(1)
+midi_b = build_midi_out(2)
+midi_c = build_midi_out(3)
+midi_d = build_midi_out(4)
 
-route_row = devices.Route{
-  key = 'voice',
-  row_out1,
-  row_out2,
-  row_out3,
-  row_out4,
+--
+-- engine output
+--
+
+engine_out = sky.PolyPerc{}
+
+--
+-- crow outputs
+--
+
+crow_a = sky.crow.Mono{
+  velocity = true,
+  attack = 0.025,
+  -- release = 1.025,
+  release = 0.1,
+  pitch_output = 1,
+  shape_output = 2,
 }
+
+crow_b = sky.crow.Mono{
+  velocity = true,
+  attack = 0.025,
+  release = 0.1,
+  pitch_output = 3,
+  shape_output = 4,
+}
+
+destinations = devices.Route{
+  key = 'voice',
+  default = 1,
+  sky.Chain{ engine_out },
+  midi_a,
+  midi_b,
+  midi_c,
+  midi_d,
+  sky.Chain{ crow_a },
+  sky.Chain{ crow_b },
+}
+
+--
+-- ui glue
+--
 
 controller = pages.Controller(tambla)
 
@@ -90,17 +128,23 @@ norns_display = sky.Chain{
   }
 }
 
-main_outputs = sky.Switcher{
-  which = 1,
-  sky.PolyPerc{},
-  sky.Output{},
-}
+-- main_outputs = sky.Switcher{
+--   which = 1,
+--   engine_out,
+--   -- sky.Output{},
+--   midi_a,
+--   midi_b,
+--   midi_c,
+--   midi_d,
+--   crow_a,
+--   crow_b,
+-- }
 
 main_pitch = sky.Pitch{}
 
-main_channel = sky.Channel{
-  channel = 1
-}
+-- main_channel = sky.Channel{
+--   channel = 1
+-- }
 
 held = sky.Held{}
 
@@ -114,10 +158,8 @@ main = sky.Chain{
   random,
   scale,
   sky.MakeNote{},
-  route_row,
-  main_channel,
-  main_outputs,
   main_logger,
+  destinations,
   function(event, output)
     if tambla.is_tick(event) then output(sky.mk_redraw(event.beat)) end
   end,
@@ -207,10 +249,10 @@ function init()
 
   -- tambla
   controller:set_input_device(midi_input)
-  controller:set_output_switcher(main_outputs)
-  controller:set_channeler(main_channel)
+  controller:set_output_router(destinations)
   controller:set_transposer(main_pitch)
-  controller:set_row_outputs({row_out1, row_out2, row_out3, row_out4})
+  controller:set_midi_outputs({midi_a, midi_b, midi_c, midi_d})
+  controller:set_crow_outputs({crow_a, crow_b})
   controller:set_logger(main_logger)
   controller:set_hold_state_setter(hold_state_setter)
   controller:set_random_device(random)

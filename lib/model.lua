@@ -169,6 +169,7 @@ function Tambla:new(props)
   self.tick_period = props.tick_period or 1/32
   self.slots = {}
   self.row_sync = {}
+  self.row_voice = {}
 
   self.beat_offset = 0
   self.beat_stopped = 0
@@ -216,6 +217,15 @@ end
 
 function Tambla:sync(i, beat)
   return beat - (self.row_sync[i] or 0)
+end
+
+function Tambla:set_voice(i, v)
+  self.row_voice[i] = v
+end
+
+function Tambla:voice(i)
+  -- if voice == nil then event should go to the default destination
+  return self.row_voice[i] or 0
 end
 
 function Tambla:transport_start()

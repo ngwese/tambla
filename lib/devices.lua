@@ -51,6 +51,8 @@ function TamblaNoteGen:process(event, output, state)
         local step = r.steps[idx] -- which step within row
         local note = self._notes[i] -- note which matches row based on order held
         if note ~= nil then
+          local row_voice = self.model:voice(i)
+          -- print("row_voice = ", row_voice)
           if chance_off or (math.random() < (step.chance + chance_boost)) then
             -- determine velocity
             local velocity = 127
@@ -66,14 +68,14 @@ function TamblaNoteGen:process(event, output, state)
               end
               -- requires a make_note device to produce note off
               local ev = sky.mk_note_on(note.note, velocity, note.ch, duration)
-              ev.voice = i
+              ev.voice = row_voice
               output(ev)
             end
           end
           -- always output aux?
           local cc = util.linlin(0, 1, 0, 127, step.aux)
           local cc_ev = sky.mk_control_change(1, cc, note.ch)
-          cc_ev.voice = i
+          cc_ev.voice = row_voice
           output(cc_ev)
         end
       end
@@ -109,6 +111,7 @@ function Route:new(props)
     self[i] = child
     self._count = i
   end
+  self:set_default(props.default or 1)
 end
 
 function Route:process(event, output, state)
@@ -118,12 +121,18 @@ function Route:process(event, output, state)
     return
   end
 
+  if where == 0 then where = self.default end
+
   local chain = self[where]
   if chain ~= nil and not chain.bypass then
     chain:process(event)
   else
     output(event)
   end
+end
+
+function Route:set_default(which)
+  self.default = util.clamp(which, 1, self._count)
 end
 
 --

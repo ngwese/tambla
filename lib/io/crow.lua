@@ -28,6 +28,7 @@ function Mono:new(props)
   self:set_shape_output(props.shape_output or 2)
   self:set_attack(props.attack or 0.0)
   self:set_release(props.release or 0.0)
+  self:set_amp_min(props.amp_min or 0)
 
   -- build an internal chain to re-use Held note tracker
   self._chain = sky.Chain{
@@ -51,13 +52,13 @@ function Mono:process(event, output)
 
   -- FIXME: if the sub-chain generated any event, pass them through. a convience
   -- function seems appropriate here
-  local c = processed:count()
-  if c > 0 then
-    print("mono: ", processed:count())
-    for i, e in processed:ipairs() do
-      print(i, sky.to_string(e))
-    end
-  end
+  -- local c = processed:count()
+  -- if c > 0 then
+  --   print("mono: ", processed:count())
+  --   for i, e in processed:ipairs() do
+  --     print(i, sky.to_string(e))
+  --   end
+  -- end
 end
 
 function Mono:_do(event, output)
@@ -67,7 +68,7 @@ function Mono:_do(event, output)
       -- have a note, set pitch and trigger
       self:_pitch().volts = to_volts(last.note)
       if self.velocity then
-        local amp = util.linlin(0, 127, 0, 1, last.vel)
+        local amp = util.linlin(0, 127, self.amp_min, 1, last.vel)
         self:_shape().dyn.amp = amp
       end
       self:_shape()(true)
@@ -118,6 +119,18 @@ function Mono:set_release(release)
   self:_shape().dyn.release = release
 end
 
+function Mono:set_amp_min(v)
+  self.amp_min = util.clamp(v, 0, 1)
+end
+
+function Mono:set_velocity(bool)
+  self.velocity = bool
+  if self.velocity == false then
+    -- ensure full range shape if velocity is not used to modulate shape
+    self:_shape().dyn.amp = 1
+  end
+end
+
 --
 -- two voice
 --
@@ -148,7 +161,8 @@ end
 
 return {
   crow = {
-    Mono = singleton(Mono),
+    -- Mono = singleton(Mono),
+    Mono = Mono,
     Duo = singleton(Duo),
   },
 }

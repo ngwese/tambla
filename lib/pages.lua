@@ -875,20 +875,20 @@ function Controller:set_input_device(device)
   self.input_device = device
 end
 
-function Controller:set_output_switcher(device)
-  self.output_switcher = device
-end
-
-function Controller:set_channeler(device)
-  self.channeler = device
+function Controller:set_output_router(device)
+  self.output_router = device
 end
 
 function Controller:set_transposer(device)
   self.transposer = device
 end
 
-function Controller:set_row_outputs(outputs)
-  self.row_outs = outputs
+function Controller:set_midi_outputs(outputs)
+  self.midi_outputs = outputs
+end
+
+function Controller:set_crow_outputs(outputs)
+  self.crow_outputs = outputs
 end
 
 function Controller:set_logger(logger)
@@ -912,9 +912,9 @@ end
 
 function Controller:add_row_params(i)
   local n = tostring(i)
-  params:add_group(n, 7)
+  params:add_group(n, 5)
   params:add{type = 'control', id = 'bend' .. n, name = 'bend',
-    controlspec = cs.new(0.2, 5.0, 'lin', 0.001, 1.0, ''),
+  controlspec = cs.new(0.2, 5.0, 'lin', 0.001, 1.0, ''),
     formatter = fmt.round(0.01),
     action = function(v) self.model:slot().rows[i]:set_bend(v) end,
   }
@@ -932,28 +932,65 @@ function Controller:add_row_params(i)
     action = function(v) self.model:slot().rows[i]:set_offset(v) end,
   }
   params:add{type = 'option', id = 'destination' .. n, name = 'destination',
-    options = {'main', 'row out'},
+    options = {'default', 'polyperc', 'midi a', 'midi b', 'midi c', 'midi d', 'crow a', 'crow b'},
     default = 1,
     action = function(v)
-      -- Route device sends to output if chain it bypassed
-      self.row_outs[i].bypass = v == 1
+      self.model:set_voice(i, v - 1)
     end,
     allow_pmap = false,
   }
-  params:add{type = 'number', id = 'row_out_device' .. n, name = 'midi output',
+end
+
+function Controller:add_midi_destination(i, c)
+  params:add_group('midi ' .. c, 2)
+  params:add{type = 'number', id = 'midi_out_device_' .. c, name = 'output device',
     min = 1, max = 4, default = 2,
     action = function(v)
-      local num_devices = #self.row_outs[i].devices
-      local out_device = self.row_outs[i].devices[num_devices]
-      out_device:set_device(midi.connect(v))
+      -- MAINT: assumes Output device is the second in the midi output chain
+      local output_device = self.midi_ouputs[i].devices[2]
+      output_device:set_device(midi.connect(v))
     end,
     allow_pmap = false,
   }
-  params:add{type = 'number', id = 'row_out_ch' .. n, name = 'midi output channel',
+  params:add{type = 'number', id = 'midi_out_ch_' .. c, name = 'output channel ',
     min = 1, max = 16, default = 1,
     action = function(v)
-      -- assumes Channel device is first in the chain
-      self.row_outs[i].devices[1]:set_channel(v)
+      -- MAINT: assumes Channel device is first in the midi output chain
+      self.midi_ouputs[i].devices[1]:set_channel(v)
+    end,
+  }
+end
+
+function Controller:add_crow_destination(i, c)
+  params:add_group('crow ' .. c, 4)
+  params:add{type = 'option', id = 'crow_velocity_' .. c, name = 'velocity',
+    options = {'on', 'off'},
+    default = 1,
+    action = function(v)
+      self.crow_outputs[i]:set_velocity(v == 1)
+    end,
+  }
+  params:add{type = 'control', id = 'crow_amp_min' .. c, name = 'amp min',
+    controlspec = cs.new(0, 1, 'lin', 0.001, 0, ''),
+    formatter = fmt.round(0.01),
+    action = function(v)
+      self.crow_outputs[i]:set_amp_min(v)
+    end,
+  }
+  params:add{type = 'control', id = 'crow_attack_' .. c, name = 'attack',
+    controlspec = cs.new(0, 5, 'lin', 0.001, 0.025, ''),
+    formatter = fmt.round(0.0001),
+    action = function(v)
+      -- print("crow_attack_:", v)
+      self.crow_outputs[i]:set_attack(v)
+    end,
+  }
+  params:add{type = 'control', id = 'crow_release_' .. c, name = 'release',
+    controlspec = cs.new(0, 10, 'lin', 0.001, 0.1, ''),
+    formatter = fmt.round(0.0001),
+    action = function(v)
+      -- print("crow_release_:", v)
+      self.crow_outputs[i]:set_release(v)
     end,
   }
 end
@@ -1080,44 +1117,35 @@ function Controller:add_params()
 
   params:add_separator('tambla: i/o')
 
-  params:add{type = "number", id = "midi_in_device", name = "midi input",
-  min = 1, max = 4, default = 1,
-  action = function(v)
-    if self.input_device then
-      self.input_device:set_device(midi.connect(v))
-    end
-  end,
-}
-params:add{type = "number", id = "midi_out_device", name = "midi output (main)",
-  min = 1, max = 4, default = 2,
-  action = function(v)
-    if self.output_switcher then
-      -- MAINT: this code assumes the first device in the switcher is an
-      -- Output
-      self.output_switcher[1]:set_device(midi.connect(v))
-    end
-  end,
-}
-params:add{type = "number", id = "midi_out_ch", name = "midi output channel",
-  min = 1, max = 16, default = 1,
-  action = function(v)
-    if self.channeler then
-      self.channeler:set_channel(v)
-    end
-  end,
-}
-params:add{type = 'option', id = 'output', name = 'output',
-  options = {'polyperc', 'midi'},
-  default = 1,
-  action = function(v) self.output_switcher:set_which(v) end,
-  allow_pmap = false,
-}
+  params:add{type = "number", id = "midi_in_device", name = "midi input device",
+    min = 1, max = 4, default = 1,
+    action = function(v)
+      if self.input_device then
+        self.input_device:set_device(midi.connect(v))
+      end
+    end,
+  }
 
-params:add{type = 'option', id = 'output_logging', name = 'output logging',
-  options = {'off', 'on'},
-  default = 1,
-  action = function(v) self.logger.bypass = v == 1 end,
-}
+  params:add{type = 'option', id = 'output', name = 'output (default)',
+    options = {'polyperc', 'midi a', 'midi b', 'midi c', 'midi d', 'crow a', 'crow b'},
+    default = 1,
+    action = function(v) self.output_router:set_default(v) end,
+    allow_pmap = false,
+  }
+
+  params:add{type = 'option', id = 'output_logging', name = 'output logging',
+    options = {'off', 'on'},
+    default = 1,
+    action = function(v) self.logger.bypass = v == 1 end,
+  }
+
+  for i, c in ipairs({'a', 'b', 'c', 'd'}) do
+    self:add_midi_destination(i, c)
+  end
+
+  for i, c in ipairs({'a', 'b'}) do
+    self:add_crow_destination(i, c)
+  end
 
 end
 
