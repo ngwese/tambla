@@ -913,6 +913,14 @@ end
 function Controller:add_row_params(i)
   local n = tostring(i)
   params:add_group(n, 5)
+  params:add{type = 'option', id = 'destination' .. n, name = 'destination',
+    options = {'default', 'polyperc', 'midi a', 'midi b', 'midi c', 'midi d', 'crow a', 'crow b'},
+    default = 1,
+    action = function(v)
+      self.model:set_voice(i, v - 1)
+    end,
+    allow_pmap = false,
+  }
   params:add{type = 'control', id = 'bend' .. n, name = 'bend',
   controlspec = cs.new(0.2, 5.0, 'lin', 0.001, 1.0, ''),
     formatter = fmt.round(0.01),
@@ -930,14 +938,6 @@ function Controller:add_row_params(i)
   params:add{type = 'number', id = 'offset' .. n, name = 'offset',
     min = -16, max = 16, default = 0,
     action = function(v) self.model:slot().rows[i]:set_offset(v) end,
-  }
-  params:add{type = 'option', id = 'destination' .. n, name = 'destination',
-    options = {'default', 'polyperc', 'midi a', 'midi b', 'midi c', 'midi d', 'crow a', 'crow b'},
-    default = 1,
-    action = function(v)
-      self.model:set_voice(i, v - 1)
-    end,
-    allow_pmap = false,
   }
 end
 
