@@ -1,8 +1,9 @@
 -- bending rhythmic arpeggio
--- 1.1.1 @ngwese
--- <url>
+-- 1.2.0-beta.1 @ngwese
 --
--- E1 select slot
+-- pages: macro < play > edit
+--
+-- E1 select horizontal/column
 -- E2 row param
 -- E3 row param value
 --
@@ -128,23 +129,7 @@ norns_display = sky.Chain{
   }
 }
 
--- main_outputs = sky.Switcher{
---   which = 1,
---   engine_out,
---   -- sky.Output{},
---   midi_a,
---   midi_b,
---   midi_c,
---   midi_d,
---   crow_a,
---   crow_b,
--- }
-
 main_pitch = sky.Pitch{}
-
--- main_channel = sky.Channel{
---   channel = 1
--- }
 
 held = sky.Held{}
 

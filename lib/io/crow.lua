@@ -2,14 +2,6 @@ sky.use('device/arp') -- ensure the Held device is loaded
 
 local Singleton = nil
 
--- sky.Chain{
---   sky.crow.Mono{
---     velocity = true,
---     attack = 0.01,
---     release = 0.5,
---   }
--- }
-
 --
 -- mono voice:
 --  out[1]: pitch
