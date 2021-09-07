@@ -1,13 +1,12 @@
 sky.use('device/arp') -- ensure the Held device is loaded
 
-local Singleton = nil
+-- local Singleton = nil
 
 --
 -- mono voice:
 --  out[1]: pitch
 --  out[2]: shape [trigger, gate, or env] (optionally scaled by velocity)
---  out[3]: mod
---  out[4]: key track
+--
 
 local Mono = sky.Device:extend()
 
@@ -136,37 +135,67 @@ function Mono:set_velocity(bool)
 end
 
 --
--- two voice
+-- BaseSynth (for ii synth modes in W/ and JF)
 --
 
-local Duo = sky.Device:extend()
+local BaseSynth = sky.Device:extend()
 
-function Duo:new(props)
-  Duo.super.new(self, props)
+function BaseSynth:new(props)
+  BaseSynth.super.new(self, props)
+  self.velocity = props.velocity
 end
 
-function Duo:process(event, output)
-  -- TODO:
+function BaseSynth:process(event, output)
+  if sky.is_type(event, sky.types.NOTE_ON) then
+    local amp = 1
+    if self.velocity then
+      amp = util.linlin(0, 127, self.amp_min, 1, event.vel)
+    end
+    self:play_note(to_volts(event.note), amp)
+  end
   output(event)
 end
 
+--
+-- just friends
+--
 
-function singleton(class)
-  return function(props)
-    if Singleton == nil then
-      Singleton = class(props)
-    elseif not Singleton:is(class) then
-      -- TODO: verify this catches the construct different class case
-      error("only one crow output class can be used at one time")
-    end
-    return Singleton
-  end
+local Jf = BaseSynth:extend()
+
+function Jf:play_note(pitch, level)
+  crow.ii.jf.play_note(pitch, level)
 end
+
+--
+-- w/ synth
+--
+
+local Wsyn = BaseSynth:extend()
+
+function Wsyn:play_note(pitch, level)
+  crow.ii.wsyn.play_note(pitch, level)
+end
+
+--
+-- module
+--
+
+-- function singleton(class)
+--   return function(props)
+--     if Singleton == nil then
+--       Singleton = class(props)
+--     elseif not Singleton:is(class) then
+--       -- TODO: verify this catches the construct different class case
+--       error("only one crow output class can be used at one time")
+--     end
+--     return Singleton
+--   end
+-- end
 
 return {
   crow = {
-    -- Mono = singleton(Mono),
     Mono = Mono,
-    Duo = singleton(Duo),
+    Jf = Jf,
+    Wsyn = Wsyn,
   },
 }

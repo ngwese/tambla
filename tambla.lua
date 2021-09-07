@@ -30,6 +30,7 @@ local halfsecond = include('lib/halfsecond')
 local model = include('lib/model')
 local pages = include('lib/pages')
 local devices = include('lib/devices')
+local wsyn = include('lib/wsyn')
 
 tambla = model.Tambla{
   tick_period = 1/64,
@@ -94,6 +95,8 @@ crow_b = sky.crow.Mono{
   shape_output = 4,
 }
 
+crow_wsyn = sky.crow.Wsyn{}
+
 destinations = devices.Route{
   key = 'voice',
   default = 1,
@@ -104,6 +107,7 @@ destinations = devices.Route{
   midi_d,
   sky.Chain{ crow_a },
   sky.Chain{ crow_b },
+  sky.Chain{ crow_wsyn },
 }
 
 --
@@ -224,6 +228,8 @@ grid.add = function(dev) grid_init() end
 clock.transport.start = function() tambla:transport_start() end
 clock.transport.stop = function() tambla:transport_stop() end
 
+wsyn_controller = wsyn.Controller{}
+
 function init()
   halfsecond.init()
 
@@ -231,6 +237,10 @@ function init()
   params:set('delay', 0.13)
   params:set('delay_rate', 0.95)
   params:set('delay_feedback', 0.27)
+
+  params:add_separator('synth')
+  engine_out:add_params(true)        -- group
+  wsyn_controller:add_params(true)   -- group
 
   -- tambla
   controller:set_input_device(midi_input)

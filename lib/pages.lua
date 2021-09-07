@@ -914,7 +914,7 @@ function Controller:add_row_params(i)
   local n = tostring(i)
   params:add_group(n, 5)
   params:add{type = 'option', id = 'destination' .. n, name = 'destination',
-    options = {'default', 'polyperc', 'midi a', 'midi b', 'midi c', 'midi d', 'crow a', 'crow b'},
+    options = {'default', 'polyperc', 'midi a', 'midi b', 'midi c', 'midi d', 'crow a', 'crow b', 'wsyn'},
     default = 1,
     action = function(v)
       self.model:set_voice(i, v - 1)
@@ -1140,7 +1140,7 @@ function Controller:add_params()
   }
 
   params:add{type = 'option', id = 'output', name = 'output (default)',
-    options = {'polyperc', 'midi a', 'midi b', 'midi c', 'midi d', 'crow a', 'crow b'},
+    options = {'polyperc', 'midi a', 'midi b', 'midi c', 'midi d', 'crow a', 'crow b', 'wsyn'},
     default = 1,
     action = function(v) self.output_router:set_default(v) end,
     allow_pmap = false,
