@@ -44,7 +44,7 @@ tambla = model.Tambla{
 main_logger = sky.Logger{
   bypass = true,
   filter = function(e)
-    return tambla.is_tick(e) or sky.is_clock(e)
+    return tambla.is_tick(e) or sky.is_clock(e) -- or sky.is_type(e, sky.types.CONTROL_CHANGE)
   end,
 }
 

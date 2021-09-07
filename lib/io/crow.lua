@@ -21,6 +21,8 @@ function Mono:new(props)
   self:set_attack(props.attack or 0.0)
   self:set_release(props.release or 0.0)
   self:set_amp_min(props.amp_min or 0)
+  self:set_pitch_slew(props.pitch_slew or 0)
+  self:set_pitch_slew_shape(props.pitch_slew_shape or 'linear')
 
   -- build an internal chain to re-use Held note tracker
   self._chain = sky.Chain{
@@ -113,6 +115,16 @@ end
 
 function Mono:set_amp_min(v)
   self.amp_min = util.clamp(v, 0, 1)
+end
+
+function Mono:set_pitch_slew(v)
+  self.pitch_slew = v
+  self:_pitch().slew = v
+end
+
+function Mono:set_pitch_slew_shape(name)
+  self.pitch_slew_shape = name
+  self:_pitch().shape = name
 end
 
 function Mono:set_velocity(bool)

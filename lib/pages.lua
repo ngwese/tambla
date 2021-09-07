@@ -962,7 +962,7 @@ function Controller:add_midi_destination(i, c)
 end
 
 function Controller:add_crow_destination(i, c)
-  params:add_group('crow ' .. c, 4)
+  params:add_group('crow ' .. c, 6)
   params:add{type = 'option', id = 'crow_velocity_' .. c, name = 'velocity',
     options = {'on', 'off'},
     default = 1,
@@ -981,7 +981,6 @@ function Controller:add_crow_destination(i, c)
     controlspec = cs.new(0, 5, 'lin', 0.001, 0.025, ''),
     formatter = fmt.round(0.0001),
     action = function(v)
-      -- print("crow_attack_:", v)
       self.crow_outputs[i]:set_attack(v)
     end,
   }
@@ -989,8 +988,22 @@ function Controller:add_crow_destination(i, c)
     controlspec = cs.new(0, 10, 'lin', 0.001, 0.1, ''),
     formatter = fmt.round(0.0001),
     action = function(v)
-      -- print("crow_release_:", v)
       self.crow_outputs[i]:set_release(v)
+    end,
+  }
+  params:add{type = 'control', id = 'crow_pitch_slew_' .. c, name = 'pitch slew',
+    controlspec = cs.new(0, 5, 'lin', 0.001, 0.0, ''),
+    formatter = fmt.round(0.0001),
+    action = function(v)
+      self.crow_outputs[i]:set_pitch_slew(v)
+    end,
+  }
+  local slew_shapes = {'linear', 'sine', 'logarithmic', 'exponential', 'now', 'wait', 'over', 'under', 'rebound'}
+  params:add{type = 'option', id = 'crow_pitch_slew_shape_' .. c, name = 'slew shape',
+    options = slew_shapes,
+    default = 1,
+    action = function(v)
+      self.crow_outputs[i]:set_pitch_slew_shape(slew_shapes[v])
     end,
   }
 end
