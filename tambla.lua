@@ -241,6 +241,7 @@ function init()
   params:add_separator('synth')
   engine_out:add_params(true)        -- group
   wsyn_controller:add_params(true)   -- group
+  wsyn_controller:send_params()      -- ensure module params match
 
   -- tambla
   controller:set_input_device(midi_input)

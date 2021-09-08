@@ -35,9 +35,9 @@ function Controller:device()
   return self._device or crow.ii.wsyn
 end
 
-function Controller:send_all()
+function Controller:send_params()
   for _, id in ipairs(PARAM_IDS) do
-    local param = params:lookup(id)
+    local param = params:lookup_param(id)
     param:bang()
   end
 end
@@ -124,7 +124,7 @@ function Controller:add_params(group)
   }
   params:add{type = 'trigger', id = 'wsyn_init', name = 'init',
     action = function()
-      self:send_all()
+      self:send_params()
     end
   }
 
