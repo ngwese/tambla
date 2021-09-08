@@ -1,5 +1,5 @@
 -- bending rhythmic arpeggio
--- 1.2.0-beta.1 @ngwese
+-- 1.2.0 @ngwese
 --
 -- pages: macro < play > edit
 --
