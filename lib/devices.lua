@@ -9,7 +9,7 @@ function TamblaNoteGen:new(model, controller)
   TamblaNoteGen.super.new(self)
   self.model = model
   self.controller = controller
-  self.default_duration = 1/16
+  self.default_duration = 0.8
   self._scheduler = nil
   self._notes = {}
   self._next_notes = nil
@@ -52,7 +52,6 @@ function TamblaNoteGen:process(event, output, state)
         local note = self._notes[i] -- note which matches row based on order held
         if note ~= nil then
           local row_voice = self.model:voice(i)
-          -- print("row_voice = ", row_voice)
           if chance_off or (math.random() < (step.chance + chance_boost)) then
             -- determine velocity
             local velocity = 127
@@ -64,10 +63,13 @@ function TamblaNoteGen:process(event, output, state)
               -- determine length
               local duration = self.default_duration
               if length_on then
-                duration = clock.get_beat_sec(step.duration * (1 / (32 / r.res)))
+                duration = step.duration * r.res / 16 -- why?
               end
+              local duration_sec = clock.get_beat_sec() * duration
+              -- print("duration:", duration)
+              -- print("duration sec:", duration_sec)
               -- requires a make_note device to produce note off
-              local ev = sky.mk_note_on(note.note, velocity, note.ch, duration)
+              local ev = sky.mk_note_on(note.note, velocity, note.ch, duration_sec)
               ev.voice = row_voice
               output(ev)
             end

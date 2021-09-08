@@ -13,7 +13,7 @@ end
 
 function Step:set_chance(c) self.chance = util.clamp(c, 0, 1) end
 function Step:set_velocity(v) self.velocity = util.clamp(v, 0, 1) end
-function Step:set_duration(d) self.duration = util.clamp(d, 0.1, 1) end
+function Step:set_duration(d) self.duration = util.clamp(d, 0.1, 4) end
 function Step:set_aux(v) self.aux = util.clamp(v, 0, 1) end
 
 function Step:is_active()
