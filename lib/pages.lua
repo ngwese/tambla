@@ -947,7 +947,7 @@ function Controller:add_midi_destination(i, c)
     min = 1, max = 4, default = 2,
     action = function(v)
       -- MAINT: assumes Output device is the second in the midi output chain
-      local output_device = self.midi_ouputs[i].devices[2]
+      local output_device = self.midi_outputs[i].devices[2]
       output_device:set_device(midi.connect(v))
     end,
     allow_pmap = false,
@@ -956,7 +956,7 @@ function Controller:add_midi_destination(i, c)
     min = 1, max = 16, default = 1,
     action = function(v)
       -- MAINT: assumes Channel device is first in the midi output chain
-      self.midi_ouputs[i].devices[1]:set_channel(v)
+      self.midi_outputs[i].devices[1]:set_channel(v)
     end,
   }
 end
