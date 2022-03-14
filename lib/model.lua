@@ -236,9 +236,9 @@ end
 function Tambla:select_slot(i, queued)
   self._next_selected_slot = util.clamp(math.floor(i), 1, self._slot_count)
   if not queued then self._selected_slot = self._next_selected_slot end
-  for i = 1, self.NUM_ROWS do
-    self.next_row_slot[i] = self._selected_slot
-    if not qeueud then self.row_slot[i] = self._selected_slot end
+  for r = 1, self.NUM_ROWS do
+    self.next_row_slot[r] = self._next_selected_slot
+    if not queued then self.row_slot[r] = self._next_selected_slot end
   end
 end
 
