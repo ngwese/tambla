@@ -52,10 +52,32 @@ function Row:new(props)
   self._scaler = sky.build_scalex(0, 1, 0, 1)
 end
 
-function Row:set_res(r) self.res = util.clamp(math.floor(r), 4, 32) end
-function Row:set_n(n) self.n = util.clamp(math.floor(n), 2, 32) end
-function Row:set_bend(b) self.bend = util.clamp(b, 0.2, 5) end
-function Row:set_offset(o) self.offset = math.floor(o) end
+function Row:set_res(r, queued)
+  self.next_res = util.clamp(math.floor(r), 4, 32)
+  if not queued then self.res = self.next_res end
+end
+
+function Row:set_n(n, queued)
+  self.next_n = util.clamp(math.floor(n), 2, 32)
+  if not queued then self.n = self.next_n end
+end
+
+function Row:set_bend(b, queued)
+  self.next_bend = util.clamp(b, 0.2, 5)
+  if not queued then self.bend = self.next_bend end
+end
+
+function Row:set_offset(o, queued)
+  self.next_offset = math.floor(o)
+  if not queued then self.offset = self.next_offset end
+end
+
+function Row:apply_queued()
+  self.res = self.next_res
+  self.n = self.next_n
+  self.bend = self.next_bend
+  self.offset = self.next_offset
+end
 
 function Row:clear()
   for i = 1, self.MAX_STEPS do
@@ -171,7 +193,9 @@ function Tambla:new(props)
   self.row_sync = {}
   self.row_voice = {}
   self.row_running = {}
+  self.next_row_running = {}
   self.row_slot = {}
+  self.next_row_slot = {}
 
   self.beat_offset = 0
   self.beat_stopped = 0
@@ -182,6 +206,7 @@ function Tambla:new(props)
       table.insert(self.slots, p)
       table.insert(self.row_sync, 0)
       table.insert(self.row_running, true)
+      table.insert(self.next_row_running, true)
     end
   else
     local p = Pattern()
@@ -189,6 +214,7 @@ function Tambla:new(props)
     table.insert(self.slots, p)
     table.insert(self.row_sync, 0)
     table.insert(self.row_running, true)
+    table.insert(self.next_row_running, true)
   end
   self._slot_count = #self.slots
   self:select_slot(1)
@@ -207,10 +233,12 @@ function Tambla:slot_count()
   return self._slot_count
 end
 
-function Tambla:select_slot(i)
-  self._selected_slot = util.clamp(math.floor(i), 1, self._slot_count)
+function Tambla:select_slot(i, queued)
+  self._next_selected_slot = util.clamp(math.floor(i), 1, self._slot_count)
+  if not queued then self._selected_slot = self._next_selected_slot end
   for i = 1, self.NUM_ROWS do
-    self.row_slot[i] = self._selected_slot
+    self.next_row_slot[i] = self._selected_slot
+    if not qeueud then self.row_slot[i] = self._selected_slot end
   end
 end
 
@@ -230,10 +258,11 @@ function Tambla:set_voice(i, v)
   self.row_voice[i] = v
 end
 
-function Tambla:select_row_slot(i, s)
+function Tambla:select_row_slot(i, s, queued)
   local r = util.clamp(math.floor(i), 1, self.NUM_ROWS)
   local s = util.clamp(math.floor(s), 1, self._slot_count)
-  self.row_slot[r] = s
+  self.next_row_slot[r] = s
+  if not queued then self.row_slot[r] = s end
 end
 
 function Tambla:row(i)
@@ -244,10 +273,19 @@ function Tambla:row_is_running(i)
   return self.row_running[i]
 end
 
-function Tambla:set_row_is_running(i, state)
-  self.row_running[i] = state
+function Tambla:set_row_is_running(i, state, queued)
+  self.next_row_running[i] = state
+  if not queued then self.row_running[i] = state end
 end
 
+function Tambla:apply_queued()
+  self._selected_slot = self._next_selected_slot
+  for i = 1, self.NUM_ROWS do
+    self.row_running[i] = self.next_row_running[i]
+    self.row_slot[i] = self.next_row_slot[i]
+    self:row(i):apply_queued()
+  end
+end
 
 function Tambla:voice(i)
   -- if voice == nil then event should go to the default destination

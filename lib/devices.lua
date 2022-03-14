@@ -10,6 +10,7 @@ function TamblaNoteGen:new(model, controller)
   self.model = model
   self.controller = controller
   self.default_duration = 0.8
+  self.beats_per_bar = 8
   self._scheduler = nil
   self._notes = {}
   self._next_notes = nil
@@ -17,6 +18,7 @@ function TamblaNoteGen:new(model, controller)
   for i = 1, self.model.NUM_ROWS do
     self._last_index[i] = 0
   end
+  self._last_bar_beat = nil
 end
 
 function TamblaNoteGen:device_inserted(chain)
@@ -44,15 +46,26 @@ function TamblaNoteGen:process(event, output, state)
     local velocity_on = self.controller.velocity_mod
     local length_on = self.controller.length_mod
 
-    -- for i, r in ipairs(self.model:slot().rows) do
+    -- determine if this is a cue point
+    if self._last_bar_beat == nil then
+      self._last_bar_beat = math.floor(beat)
+    end
+
+    local whole_beat = math.floor(beat)
+    if (whole_beat - self._last_bar_beat) >= self.beats_per_bar then
+      print("APPLY_QUEUED")
+      self.model:apply_queued()
+      self._last_bar_beat = whole_beat
+    end
+
     for i = 1, self.model.NUM_ROWS do
       local r, is_running = self.model:row(i)
       local idx = r:step_index(self.model:sync(i, beat))
-      if is_running and idx ~= self._last_index[i] then
+      if idx ~= self._last_index[i] then
         -- we are at a new step
         local step = r.steps[idx] -- which step within row
         local note = self._notes[i] -- note which matches row based on order held
-        if note ~= nil then
+        if is_running and note ~= nil then
           local row_voice = self.model:voice(i)
           if chance_off or (math.random() < (step.chance + chance_boost)) then
             -- determine velocity
