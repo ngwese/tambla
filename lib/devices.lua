@@ -10,7 +10,7 @@ function TamblaNoteGen:new(model, controller)
   self.model = model
   self.controller = controller
   self.default_duration = 0.8
-  self.beats_per_bar = 8
+  self.beats_per_bar = 4
   self._scheduler = nil
   self._notes = {}
   self._next_notes = nil
@@ -52,10 +52,11 @@ function TamblaNoteGen:process(event, output, state)
     end
 
     local whole_beat = math.floor(beat)
-    if (whole_beat - self._last_bar_beat) >= self.beats_per_bar then
-      print("APPLY_QUEUED")
+    local beat_diff = whole_beat - self._last_bar_beat
+    if beat_diff >= self.beats_per_bar then
       self.model:apply_queued()
       self._last_bar_beat = whole_beat
+      --print("APPLY_QUEUED", beat_diff, self._last_bar_beat)
     end
 
     for i = 1, self.model.NUM_ROWS do
