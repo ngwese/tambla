@@ -211,15 +211,18 @@ function PlayPage:process(event, output, state, props)
   elseif sky.is_enc(event) then
     if event.n == 1 then
       if key_z[1] == 1 then
-        self.controller.row_acc = util.clamp(self.controller.row_acc + (event.delta / 10), 1, self.controller.row_count)
+        local clamped_delta = util.clamp(event.delta, -1, 1)
+        self.controller.row_acc = util.clamp(self.controller.row_acc + (clamped_delta / 5), 1, self.controller.row_count)
         self.controller:select_row(self.controller.row_acc)
       else
-        self.slot_acc = util.clamp(self.slot_acc + (event.delta / 10), 1, self.model:slot_count())
+        local clamped_delta = util.clamp(event.delta, -1, 1)
+        self.slot_acc = util.clamp(self.slot_acc + (clamped_delta / 5), 1, self.model:slot_count())
         self.model:select_slot(self.slot_acc)
         params:set('active_pattern', self.model:selected_slot_idx(), true)
       end
     elseif event.n == 2 then
-      controller.prop_acc = util.clamp(controller.prop_acc + (event.delta / 10), 1, controller.prop_count)
+      local clamped_delta = util.clamp(event.delta, -1, 1)
+      controller.prop_acc = util.clamp(controller.prop_acc + (clamped_delta / 5), 1, controller.prop_count)
       self.controller:select_prop(controller.prop_acc)
     elseif event.n == 3 then
       local idx = self.controller:selected_row_idx()
@@ -309,11 +312,13 @@ function EditPage:process(event, output, state, props)
     if event.n == 1 then
       if key_z[1] == 0 then
         -- select step
-        self.controller.step_acc = util.clamp(self.controller.step_acc + (event.delta / 5), 1, self.controller:selected_row_n())
+        local clamped_delta = util.clamp(event.delta, -1, 1)
+        self.controller.step_acc = util.clamp(self.controller.step_acc + (clamped_delta / 5), 1, self.controller:selected_row_n())
         self.controller:select_step(self.controller.step_acc)
       else
         -- select row
-        self.controller.row_acc = util.clamp(self.controller.row_acc + (event.delta / 10), 1, self.controller.row_count)
+        local clamped_delta = util.clamp(event.delta, -1, 1)
+        self.controller.row_acc = util.clamp(self.controller.row_acc + (clamped_delta / 5), 1, self.controller.row_count)
         self.controller:select_row(self.controller.row_acc)
       end
     elseif event.n == 2 then
