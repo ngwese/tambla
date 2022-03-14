@@ -163,13 +163,15 @@ local Tambla = sky.Object:extend()
 Tambla.NUM_ROWS = Pattern.NUM_ROWS
 Tambla.MAX_SLOTS = 4
 Tambla.TICK_EVENT = 'TAMBLA_TICK'
-Tambla.MODEL_VERSION = 1
+Tambla.MODEL_VERSION = 2
 
 function Tambla:new(props)
   self.tick_period = props.tick_period or 1/32
   self.slots = {}
   self.row_sync = {}
   self.row_voice = {}
+  self.row_running = {}
+  self.row_slot = {}
 
   self.beat_offset = 0
   self.beat_stopped = 0
@@ -179,12 +181,14 @@ function Tambla:new(props)
     for _, p in ipairs(props.slots) do
       table.insert(self.slots, p)
       table.insert(self.row_sync, 0)
+      table.insert(self.row_running, true)
     end
   else
     local p = Pattern()
     p:randomize()
     table.insert(self.slots, p)
     table.insert(self.row_sync, 0)
+    table.insert(self.row_running, true)
   end
   self._slot_count = #self.slots
   self:select_slot(1)
@@ -205,6 +209,9 @@ end
 
 function Tambla:select_slot(i)
   self._selected_slot = util.clamp(math.floor(i), 1, self._slot_count)
+  for i = 1, self.NUM_ROWS do
+    self.row_slot[i] = self._selected_slot
+  end
 end
 
 function Tambla:selected_slot_idx()
@@ -222,6 +229,25 @@ end
 function Tambla:set_voice(i, v)
   self.row_voice[i] = v
 end
+
+function Tambla:select_row_slot(i, s)
+  local r = util.clamp(math.floor(i), 1, self.NUM_ROWS)
+  local s = util.clamp(math.floor(s), 1, self._slot_count)
+  self.row_slot[r] = s
+end
+
+function Tambla:row(i)
+  return self.slots[self.row_slot[i]].rows[i], self.row_running[i]
+end
+
+function Tambla:row_is_running(i)
+  return self.row_running[i]
+end
+
+function Tambla:set_row_is_running(i, state)
+  self.row_running[i] = state
+end
+
 
 function Tambla:voice(i)
   -- if voice == nil then event should go to the default destination

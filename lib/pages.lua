@@ -30,7 +30,7 @@ function RowWidget:width(row)
   return self.STEP_WIDTH * row.n
 end
 
-function RowWidget:draw(row, beats)
+function RowWidget:draw(row, beats, is_running)
   -- draw from bottom, left
   local x = self.topleft[1]
   local y = self.topleft[2] + self.BAR_HEIGHT
@@ -48,16 +48,18 @@ function RowWidget:draw(row, beats)
   end
 
   -- playhead
-  x = self.topleft[1]
-  y = self.topleft[2] + self.BAR_HEIGHT + 3
-  screen.move(x, y)
-  screen.line_rel(self:width(row) * row:head_position(beats), 0)
-  screen.level(1)
-  screen.close()
-  screen.stroke()
-  screen.level(15)
-  screen.pixel(self:width(row) + 3, y - 1)
-  screen.fill()
+  if is_running then
+    x = self.topleft[1]
+    y = self.topleft[2] + self.BAR_HEIGHT + 3
+    screen.move(x, y)
+    screen.line_rel(self:width(row) * row:head_position(beats), 0)
+    screen.level(1)
+    screen.close()
+    screen.stroke()
+    screen.level(15)
+    screen.pixel(self:width(row) + 3, y - 1)
+    screen.fill()
+    end
 end
 
 function RowWidget:draw_step_selection(row, step)
@@ -117,9 +119,9 @@ function PageBase:draw_mode()
 end
 
 function PageBase:draw_rows(beat)
-  local rows = self.model:slot().rows
   for i, w in ipairs(self.widgets) do
-    w:draw(rows[i], self.model:sync(i, beat))
+    local row, is_running = self.model:row(i)
+    w:draw(row, self.model:sync(i, beat), is_running)
   end
 end
 

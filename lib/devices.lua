@@ -44,9 +44,11 @@ function TamblaNoteGen:process(event, output, state)
     local velocity_on = self.controller.velocity_mod
     local length_on = self.controller.length_mod
 
-    for i, r in ipairs(self.model:slot().rows) do
+    -- for i, r in ipairs(self.model:slot().rows) do
+    for i = 1, self.model.NUM_ROWS do
+      local r, is_running = self.model:row(i)
       local idx = r:step_index(self.model:sync(i, beat))
-      if idx ~= self._last_index[i] then
+      if is_running and idx ~= self._last_index[i] then
         -- we are at a new step
         local step = r.steps[idx] -- which step within row
         local note = self._notes[i] -- note which matches row based on order held
