@@ -27,13 +27,13 @@ sky.use('engine/polyperc')
 
 local halfsecond = include('lib/halfsecond')
 
-local model = include('lib/model')
+model = include('lib/model')
 local pages = include('lib/pages')
 local devices = include('lib/devices')
 local wsyn = include('lib/wsyn')
 
 tambla = model.Tambla{
-  tick_period = 1/64,
+  tick_period = 1/64, -- fractions of a beat
   slots = {
     model.Pattern():randomize(),
     model.Pattern():randomize(),
@@ -139,10 +139,11 @@ held = sky.Held{}
 
 random = devices.Random{ bypass = true }
 scale = devices.Scale{ bypass = true }
+generator = devices.TamblaNoteGen(tambla, controller)
 
 main = sky.Chain{
   held,
-  devices.TamblaNoteGen(tambla, controller),
+  generator,
   main_pitch,
   random,
   scale,
@@ -226,7 +227,10 @@ local function grid_init() grid_input.chain:init() end
 grid.add = function(dev) grid_init() end
 
 clock.transport.start = function() tambla:transport_start() end
-clock.transport.stop = function() tambla:transport_stop() end
+clock.transport.stop = function()
+  tambla:transport_stop()
+  generator:clear_last_bar_beat()
+end
 
 wsyn_controller = wsyn.Controller{}
 

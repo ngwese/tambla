@@ -18,14 +18,18 @@ function TamblaNoteGen:new(model, controller)
   for i = 1, self.model.NUM_ROWS do
     self._last_index[i] = 0
   end
-  self._last_bar_beat = nil
+  self._did_cue = nil
+  self:clear_last_bar_beat()
 end
 
 function TamblaNoteGen:device_inserted(chain)
   self._scheduler = chain:scheduler(self)
   self._scheduler:run(function(output)
+    clock.sync(1)
+    output(self.model:mk_tick())
     while true do
-      clock.sleep(self.model.tick_period)
+      -- clock.sleep(self.model.tick_period)
+      clock.sync(self.model.tick_period)
       output(self.model:mk_tick())
     end
   end)
@@ -35,9 +39,14 @@ function TamblaNoteGen:device_removed(chain)
   self._scheduler = nil
 end
 
+function TamblaNoteGen:clear_last_bar_beat()
+  self._last_bar_beat = nil
+end
+
 function TamblaNoteGen:process(event, output, state)
   if self.model.is_tick(event) then
     output(event) -- pass the tick along
+    -- print(sky.to_string(event))
 
     local beat = event.beat
     local chance_off = not self.controller.chance_mod
@@ -46,22 +55,13 @@ function TamblaNoteGen:process(event, output, state)
     local velocity_on = self.controller.velocity_mod
     local length_on = self.controller.length_mod
 
-    -- determine if this is a cue point
-    if self._last_bar_beat == nil then
-      self._last_bar_beat = math.floor(beat)
-    end
-
-    local whole_beat = math.floor(beat)
-    local beat_diff = whole_beat - self._last_bar_beat
-    if beat_diff >= self.beats_per_bar then
-      self.model:apply_queued()
-      self._last_bar_beat = whole_beat
-      --print("APPLY_QUEUED", beat_diff, self._last_bar_beat)
-    end
-
     for i = 1, self.model.NUM_ROWS do
       local r, is_running = self.model:row(i)
-      local idx = r:step_index(self.model:sync(i, beat))
+      local sx = self.model:sync(i, beat)
+      local idx = r:step_index(sx)
+      if self._did_cue then
+         print("row", i, r.n, idx, sx, r:head_position(sx))
+      end
       if idx ~= self._last_index[i] then
         -- we are at a new step
         local step = r.steps[idx] -- which step within row
@@ -100,6 +100,29 @@ function TamblaNoteGen:process(event, output, state)
       -- note that we've looked at this step
       self._last_index[i] = idx
     end
+    self._did_cue = false
+
+
+    -- determine if this is a cue point
+    if self._last_bar_beat == nil then
+      self._last_bar_beat = math.modf(beat / self.beats_per_bar) * self.beats_per_bar
+    end
+
+    -- queued changes
+    local whole_beat = math.floor(beat)
+    local beat_diff = whole_beat - self._last_bar_beat
+    if beat_diff >= self.beats_per_bar then
+    -- local _, rem = math.modf(beat / self.beats_per_bar)
+    -- if rem == 0.0 then -- too big?
+      self.model:apply_queued()
+      self._last_bar_beat = whole_beat
+      print("APPLY_QUEUED", beat_diff, self._last_bar_beat)
+      self._did_cue = true
+    else
+      -- print("diff", beat_diff)
+      self._did_cue = false
+    end
+
   elseif sky.is_type(event, sky.HELD_EVENT) then
     self._notes = event.notes
     -- update note row sync offsets

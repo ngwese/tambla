@@ -36,6 +36,76 @@ function Step:store()
 end
 
 --
+-- Follow
+--
+
+function action_null(row_num, model)
+end
+
+function build_action_relative(offset)
+  return function(row_num, model)
+    -- NOTE: select_row_slot clamps but here we wrap
+    local slot_num = model.row_slot[row_num]
+    print("ROW REL: slot_num", slot_num)
+    -- local n = ((slot_num + offset) % model.MAX_SLOTS) + 1
+    local n = util.wrap(slot_num + offset, 1, model.MAX_SLOTS)
+    print("ROW REL", row_num, slot_num)
+    model:select_row_slot(row_num, n)
+  end
+end
+
+function build_action_goto(slot_num)
+  return function(row_num, model)
+    print("ROW GOTO", row_num, slot_num)
+    model:select_row_slot(row_name, slot_name)
+  end
+end
+
+function action_stop(row_num, model)
+  -- FIXME: is this really stop?
+  print("STOPING ROW", row_num)
+  model:set_row_is_running(row_num, false)
+end
+
+
+local Follow = sky.Object:extend()
+
+function Follow:new(action)
+  self.action = action or action_null;
+end
+
+function Follow:next(rows, current_index)
+  return self.action(rows, current_index)
+end
+
+--
+-- Follow: RepeatThen
+--
+
+local RepeatThen = Follow:extend()
+
+function RepeatThen:new(bars, action)
+  RepeatThen.super.new(self, action)
+  self.bars = bars
+  self:reset()
+end
+
+function RepeatThen:reset()
+  self.count = self.bars
+end
+
+function RepeatThen:next(row_num, model)
+  self.count = self.count - 1
+  if count <= 0 then
+    self:reset()
+    self.action(row_num, model)
+  end
+end
+
+-- local forward = RepeatThen:new(1, build_action_relative(1))
+-- local backward = RepeatThen:new(1, build_action_relative(-1))
+
+--
 -- Row
 --
 
@@ -47,6 +117,7 @@ function Row:new(props)
   self:set_res(props.res or 4)
   self:set_bend(props.bend or 1.0)
   self:set_offset(props.offset or 0)
+  self:set_follow(props.follow)
   self.steps = {}
   self:clear()
   self._scaler = sky.build_scalex(0, 1, 0, 1)
@@ -70,6 +141,14 @@ end
 function Row:set_offset(o, queued)
   self.next_offset = math.floor(o)
   if not queued then self.offset = self.next_offset end
+end
+
+function Row:set_follow(f)
+  self.follow = f
+end
+
+function Row:do_follow(row_num, model)
+  if self.follow then self.follow:next(row_num, model) end
 end
 
 function Row:apply_queued()
@@ -102,8 +181,10 @@ function Row:randomize()
 end
 
 function Row:head_position(beats)
-  local _, f = math.modf(beats / self.res)
-  return self._scaler(f, self.bend)
+  -- local _, f = math.modf(beats / self.res)
+  local b, f = math.modf(beats / self.res)
+  -- return f
+  return self._scaler(f, self.bend), b
 end
 
 function Row:step_index(beats)
@@ -283,7 +364,10 @@ function Tambla:apply_queued()
   for i = 1, self.NUM_ROWS do
     self.row_running[i] = self.next_row_running[i]
     self.row_slot[i] = self.next_row_slot[i]
-    self:row(i):apply_queued()
+    local r = self:row(i)
+    -- allow queued changes to override the action?
+    r:apply_queued()
+    r:do_follow(i, self)
   end
 end
 
@@ -293,8 +377,8 @@ function Tambla:voice(i)
 end
 
 function Tambla:transport_start()
-  local _, f = math.modf(clock.get_beats())
-  self.beat_offset = f
+  -- local _, f = math.modf(clock.get_beats())
+  self.beat_offset = 0
   self.running = true
   print("Tambla:transport_start", self.running, self.beat_offset)
 end
@@ -375,4 +459,10 @@ return {
   Pattern = Pattern,
   Row = Row,
   Step = Step,
+  action_null = action_null,
+  build_action_relative = build_action_relative,
+  build_action_goto = build_action_goto,
+  action_stop = action_stop,
+  Follow = Follow,
+  RepeatThen = RepeatThen,
 }
